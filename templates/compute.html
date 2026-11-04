@@ -11,55 +11,68 @@
   <div class="card-modern-header">
     <div>
       <h2><i class="fa-solid fa-sliders text-success me-2"></i> Parameter Association Mining</h2>
-      <p class="text-muted small mb-0 mt-1">Tentukan ambang batas minimum support dan confidence untuk menyaring pola belanja signifikan.</p>
+      <p class="text-muted small mb-0 mt-1">Tentukan ambang batas minimum support (%) dan confidence (%) untuk menyaring pola belanja signifikan.</p>
     </div>
     <span class="badge bg-light text-dark border">
-      <i class="fa-solid fa-circle-info text-success me-1"></i> Dataset: 9.835 Transaksi
+      <i class="fa-solid fa-circle-info text-success me-1"></i> Total Basis: 9.835 Transaksi
     </span>
   </div>
 
   <div class="card-modern-body">
     <form id="form-komputasi">
-      <div class="row g-3 align-items-end">
-        <!-- Min Support -->
+      <div class="row g-3 align-items-center">
+        <!-- Min Support (Dalam Persen 0 - 100%) -->
         <div class="col-12 col-md-4">
           <label class="form-label-modern" for="min_support">
-            <i class="fa-solid fa-chart-pie text-muted me-1"></i> Minimum Support (0 - 1)
+            <i class="fa-solid fa-chart-pie text-muted me-1"></i> Minimum Support (%)
           </label>
           <div class="input-group">
             <span class="input-group-text bg-light text-muted border-end-0">
-              <i class="fa-solid fa-filter"></i>
+              <i class="fa-solid fa-percent"></i>
             </span>
-            <input type="number" id="min_support" name="min_support" step="0.001" min="0.001" max="1" value="0.01" 
-                   required class="form-control form-control-modern border-start-0" placeholder="0.01">
-          </div>
-          <div class="form-text text-muted small mt-1">
-            Contoh <code>0.01</code> = minimal muncul di 1% transaksi (~98 transaksi).
+            <input type="number" id="min_support" name="min_support" step="0.1" min="0.1" max="100" value="1" 
+                   required class="form-control form-control-modern border-start-0" placeholder="1" style="height: 44px;">
           </div>
         </div>
 
-        <!-- Min Confidence -->
+        <!-- Min Confidence (Dalam Persen 0 - 100%) -->
         <div class="col-12 col-md-4">
           <label class="form-label-modern" for="min_confidence">
-            <i class="fa-solid fa-gauge-high text-muted me-1"></i> Minimum Confidence (0 - 1)
+            <i class="fa-solid fa-gauge-high text-muted me-1"></i> Minimum Confidence (%)
           </label>
           <div class="input-group">
             <span class="input-group-text bg-light text-muted border-end-0">
               <i class="fa-solid fa-bullseye"></i>
             </span>
-            <input type="number" id="min_confidence" name="min_confidence" step="0.01" min="0.01" max="1" value="0.3" 
-                   required class="form-control form-control-modern border-start-0" placeholder="0.3">
-          </div>
-          <div class="form-text text-muted small mt-1">
-            Contoh <code>0.30</code> = tingkat kepastian relasi minimal 30%.
+            <input type="number" id="min_confidence" name="min_confidence" step="1" min="1" max="100" value="30" 
+                   required class="form-control form-control-modern border-start-0" placeholder="30" style="height: 44px;">
           </div>
         </div>
 
-        <!-- Submit Button -->
+        <!-- Submit Button (Aligned with Inputs) -->
         <div class="col-12 col-md-4">
-          <button type="submit" id="btn-proses" class="btn btn-emerald w-100 py-2">
+          <label class="form-label-modern d-none d-md-block" style="visibility: hidden;">&nbsp;</label>
+          <button type="submit" id="btn-proses" class="btn btn-emerald w-100" style="height: 44px;">
             <i class="fa-solid fa-play"></i> Proses Mining Apriori
           </button>
+        </div>
+      </div>
+
+      <!-- Unified Helper / Info Strip -->
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3 pt-3 border-top text-muted small">
+        <div class="d-flex flex-wrap gap-3">
+          <div>
+            <i class="fa-solid fa-circle-check text-success me-1"></i>
+            <b>Support 1%</b> = muncul di minimal 1% transaksi (&ge; 98 transaksi).
+          </div>
+          <div>
+            <i class="fa-solid fa-circle-check text-success me-1"></i>
+            <b>Confidence 30%</b> = tingkat keyakinan asosiasi belanja &ge; 30%.
+          </div>
+        </div>
+        <div class="text-secondary">
+          <i class="fa-regular fa-lightbulb text-warning me-1"></i>
+          Tip: Naikkan support jika hasil terlalu banyak, turunkan jika ingin mencari relasi langka.
         </div>
       </div>
     </form>
@@ -74,13 +87,25 @@
   <!-- Summary Stat Cards -->
   <div id="ringkasan" class="row g-3 mb-4"></div>
 
-  <!-- Frequent Itemset Section -->
+  <!-- Frequent Itemset Section with K Filter -->
   <div class="card-modern mb-4">
-    <div class="card-modern-header">
+    <div class="card-modern-header flex-wrap gap-2">
       <div class="d-flex align-items-center gap-2">
-        <h2><i class="fa-solid fa-layer-group text-success me-1"></i> Frequent Itemset (Kandidat Lolos Support)</h2>
+        <h2><i class="fa-solid fa-layer-group text-success me-1"></i> Frequent Itemset</h2>
       </div>
-      <span class="text-muted small" id="itemset-count-badge">Tabel Itemset</span>
+
+      <!-- Filter K (Ukuran Itemset) -->
+      <div class="d-flex align-items-center gap-3 ms-auto">
+        <div class="d-flex align-items-center gap-2">
+          <label for="filter-k" class="small fw-semibold text-muted text-nowrap mb-0">
+            <i class="fa-solid fa-filter text-success me-1"></i> Filter K:
+          </label>
+          <select id="filter-k" class="form-select form-select-sm form-select-modern" style="min-width: 160px;">
+            <option value="all">Semua Ukuran (k)</option>
+          </select>
+        </div>
+        <span class="text-muted small" id="itemset-count-badge">Tabel Itemset</span>
+      </div>
     </div>
 
     <div class="card-modern-body p-0">
@@ -100,17 +125,42 @@
     </div>
   </div>
 
-  <!-- Association Rules Section -->
+  <!-- Association Rules Section with Item Search & Metric Sorting -->
   <div class="card-modern mb-4">
-    <div class="card-modern-header">
+    <div class="card-modern-header flex-wrap gap-3">
       <div class="d-flex align-items-center gap-2">
-        <h2><i class="fa-solid fa-link text-success me-1"></i> Association Rules (Aturan Asosiasi Pola Belanja)</h2>
+        <h2><i class="fa-solid fa-link text-success me-1"></i> Association Rules (Pola Belanja Konsumen)</h2>
       </div>
-      <span class="text-muted small" id="rules-count-badge">Tabel Rules</span>
+
+      <!-- Controls: Item Filter & Sorting -->
+      <div class="d-flex flex-wrap align-items-center gap-2 ms-auto">
+        <!-- Search item in rules -->
+        <div class="input-group input-group-sm" style="width: 210px;">
+          <span class="input-group-text bg-white border-end-0 text-muted">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </span>
+          <input type="text" id="filter-rule-item" class="form-control form-control-modern form-control-sm border-start-0" 
+                 placeholder="Cari item dalam rules...">
+        </div>
+
+        <!-- Sorting dropdown -->
+        <div class="d-flex align-items-center gap-1">
+          <label for="sort-rules" class="small fw-semibold text-muted text-nowrap mb-0 d-none d-sm-inline">
+            <i class="fa-solid fa-arrow-down-wide-short text-success me-1"></i> Urutkan:
+          </label>
+          <select id="sort-rules" class="form-select form-select-sm form-select-modern" style="min-width: 175px;">
+            <option value="lift-desc">Lift Ratio Tertinggi</option>
+            <option value="conf-desc">Confidence Tertinggi</option>
+            <option value="supp-desc">Support Tertinggi</option>
+          </select>
+        </div>
+
+        <span class="text-muted small ms-1" id="rules-count-badge">Tabel Rules</span>
+      </div>
     </div>
 
     <div class="card-modern-body p-0">
-      <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+      <div class="table-responsive" style="max-height: 440px; overflow-y: auto;">
         <table id="tbl-rules" class="table-custom">
           <thead style="position: sticky; top: 0; z-index: 5; background-color: #F8FAFC;">
             <tr>

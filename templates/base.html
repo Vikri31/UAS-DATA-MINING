@@ -21,63 +21,67 @@
 </head>
 <body>
 
-<div class="app-wrapper">
+<div class="app-wrapper" id="appWrapper">
   <!-- Mobile Backdrop Overlay -->
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-  <!-- Left Sidebar Navigation -->
+  <!-- Left Sidebar Navigation (Supports Full & Collapsed Icon-Only Mode) -->
   <aside class="app-sidebar" id="appSidebar">
-    <!-- Brand Header -->
+    <!-- Brand Header with Internal Toggle Button -->
     <div class="sidebar-brand">
-      <div class="brand-icon-box">
-        <i class="fa-solid fa-basket-shopping"></i>
+      <div class="brand-left" id="brandExpandTrigger" title="Klik untuk beralih tampilan menu">
+        <div class="brand-icon-box">
+          <i class="fa-solid fa-basket-shopping"></i>
+        </div>
+        <div class="brand-text">
+          <h1>Groceries Miner</h1>
+          <p>Market Basket Analytics</p>
+        </div>
       </div>
-      <div class="brand-text">
-        <h1>Groceries Miner</h1>
-        <p>Market Basket Analytics</p>
-      </div>
+      <!-- Toggle button inside the sidebar itself! -->
+      <button type="button" class="sidebar-inner-toggle-btn" id="sidebarInnerToggle" title="Perkecil / Perbesar Sidebar">
+        <i class="fa-solid fa-bars-staggered"></i>
+      </button>
     </div>
 
     <!-- Navigation Menu -->
     <nav class="sidebar-nav">
       <div class="nav-section-title">Menu Utama</div>
 
-      <a href="{{ url_for('index') }}" class="sidebar-link {% if request.endpoint == 'index' %}active{% endif %}">
+      <a href="{{ url_for('index') }}" class="sidebar-link {% if request.endpoint == 'index' %}active{% endif %}" title="Dataset Transaksi">
         <i class="fa-solid fa-table-list"></i>
-        <span>Dataset Transaksi</span>
+        <span class="nav-text">Dataset Transaksi</span>
       </a>
 
-      <a href="{{ url_for('tambah') }}" class="sidebar-link {% if request.endpoint == 'tambah' %}active{% endif %}">
+      <a href="{{ url_for('tambah') }}" class="sidebar-link {% if request.endpoint == 'tambah' %}active{% endif %}" title="Tambah Data">
         <i class="fa-solid fa-circle-plus"></i>
-        <span>Tambah Data</span>
+        <span class="nav-text">Tambah Data</span>
       </a>
 
       <div class="nav-section-title">Analisis Data</div>
 
-      <a href="{{ url_for('komputasi') }}" class="sidebar-link {% if request.endpoint == 'komputasi' %}active{% endif %}">
+      <a href="{{ url_for('komputasi') }}" class="sidebar-link {% if request.endpoint == 'komputasi' %}active{% endif %}" title="Komputasi Apriori">
         <i class="fa-solid fa-brain"></i>
-        <span>Komputasi Apriori</span>
+        <span class="nav-text">Komputasi Apriori</span>
       </a>
     </nav>
 
-    <!-- Sidebar Footer -->
+    <!-- Sidebar Mini Toggle Button in Footer -->
     <div class="sidebar-footer">
-      <div class="system-status-card">
-        <div class="status-dot"></div>
-        <div class="status-info">
-          <div class="status-title">SQLite Database</div>
-          <div class="status-sub">groceries.csv (9.835 Trx)</div>
-        </div>
-      </div>
+      <button type="button" class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Perkecil / Perbesar Sidebar">
+        <i class="fa-solid fa-angles-left collapse-icon" id="collapseIcon"></i>
+        <span class="nav-text ms-2">Perkecil Menu</span>
+      </button>
     </div>
   </aside>
 
   <!-- Main Content Wrapper -->
-  <div class="app-main">
-    <!-- Sticky Topbar -->
+  <div class="app-main" id="appMain">
+    <!-- Sticky Topbar (Clean on Desktop, Toggle Only on Mobile) -->
     <header class="app-topbar">
       <div class="topbar-left">
-        <button class="sidebar-toggle-btn" id="sidebarToggle" aria-label="Toggle Sidebar">
+        <!-- Mobile-Only Toggle Button -->
+        <button class="sidebar-toggle-btn d-lg-none" id="sidebarMobileToggle" aria-label="Toggle Sidebar" title="Buka Sidebar">
           <i class="fa-solid fa-bars"></i>
         </button>
         <h2 class="topbar-title">
@@ -88,11 +92,8 @@
       </div>
 
       <div class="topbar-right">
-        <span class="badge-emerald badge-pill-responsive">
-          <i class="fa-solid fa-database"></i> SQLite 3
-        </span>
-        <span class="badge-amber badge-pill-responsive">
-          <i class="fa-solid fa-microchip"></i> Pure Python Apriori
+        <span class="badge-emerald">
+          <i class="fa-solid fa-store me-1"></i> Groceries Retail
         </span>
       </div>
     </header>
@@ -125,19 +126,86 @@
 <!-- Bootstrap 5 JS Bundle -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- Responsive Sidebar JS -->
+<!-- Responsive & Collapsible Sidebar JS -->
 <script>
   const sidebar = document.getElementById('appSidebar');
+  const appMain = document.getElementById('appMain');
   const overlay = document.getElementById('sidebarOverlay');
-  const toggleBtn = document.getElementById('sidebarToggle');
+  const innerToggleBtn = document.getElementById('sidebarInnerToggle');
+  const mobileToggleBtn = document.getElementById('sidebarMobileToggle');
+  const collapseBtn = document.getElementById('sidebarCollapseBtn');
+  const collapseIcon = document.getElementById('collapseIcon');
+  const brandTrigger = document.getElementById('brandExpandTrigger');
 
-  if (toggleBtn) {
-    toggleBtn.addEventListener('click', () => {
+  // Load saved state
+  const isCollapsed = localStorage.getItem('sidebar_collapsed') === 'true';
+  if (isCollapsed && window.innerWidth >= 992) {
+    applyCollapsedState(true);
+  }
+
+  function applyCollapsedState(collapsed) {
+    if (collapsed) {
+      sidebar.classList.add('collapsed');
+      appMain.classList.add('expanded');
+      if (collapseIcon) {
+        collapseIcon.classList.remove('fa-angles-left');
+        collapseIcon.classList.add('fa-angles-right');
+      }
+    } else {
+      sidebar.classList.remove('collapsed');
+      appMain.classList.remove('expanded');
+      if (collapseIcon) {
+        collapseIcon.classList.remove('fa-angles-right');
+        collapseIcon.classList.add('fa-angles-left');
+      }
+    }
+  }
+
+  function toggleSidebarDesktop() {
+    const willCollapse = !sidebar.classList.contains('collapsed');
+    applyCollapsedState(willCollapse);
+    localStorage.setItem('sidebar_collapsed', willCollapse);
+  }
+
+  // Handle inner sidebar toggle button click
+  if (innerToggleBtn) {
+    innerToggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (window.innerWidth < 992) {
+        sidebar.classList.remove('show');
+        overlay.classList.remove('show');
+      } else {
+        toggleSidebarDesktop();
+      }
+    });
+  }
+
+  // Clicking brand header in collapsed mode expands it back
+  if (brandTrigger) {
+    brandTrigger.addEventListener('click', () => {
+      if (window.innerWidth >= 992 && sidebar.classList.contains('collapsed')) {
+        toggleSidebarDesktop();
+      }
+    });
+  }
+
+  // Handle footer collapse button
+  if (collapseBtn) {
+    collapseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleSidebarDesktop();
+    });
+  }
+
+  // Mobile topbar hamburger button
+  if (mobileToggleBtn) {
+    mobileToggleBtn.addEventListener('click', () => {
       sidebar.classList.toggle('show');
       overlay.classList.toggle('show');
     });
   }
 
+  // Close mobile sidebar on backdrop click
   if (overlay) {
     overlay.addEventListener('click', () => {
       sidebar.classList.remove('show');

@@ -6,7 +6,13 @@
 const form = document.getElementById("form-komputasi");
 const statusEl = document.getElementById("status");
 const hasilEl = document.getElementById("hasil");
+const filterKEl = document.getElementById("filter-k");
+const filterRuleItemEl = document.getElementById("filter-rule-item");
+const sortRulesEl = document.getElementById("sort-rules");
 const charts = {};
+
+let currentItemsets = [];
+let currentRules = [];
 
 // Cegah XSS: escape karakter teks dari input pengguna
 function esc(teks) {
@@ -26,136 +32,48 @@ function gambar(id, config) {
   }
 }
 
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const btn = document.getElementById("btn-proses");
-  const originalBtnHtml = btn.innerHTML;
-
-  btn.disabled = true;
-  btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Menghitung Apriori...`;
-  
-  statusEl.innerHTML = `
-    <div class="alert-modern bg-white border shadow-sm">
-      <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div>
-      <span class="text-secondary fw-medium">Sedang memproses algoritma Apriori manual pada 9.835 transaksi groceries...</span>
-    </div>`;
-
-  try {
-    const res = await fetch("/api/komputasi", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        min_support: parseFloat(form.min_support.value),
-        min_confidence: parseFloat(form.min_confidence.value),
-      }),
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      statusEl.innerHTML = `
-        <div class="alert-modern error">
-          <i class="fa-solid fa-triangle-exclamation fs-5 text-danger"></i>
-          <div><b>Gagal memproses data:</b> ${esc(data.error || "Terjadi kesalahan pada server.")}</div>
-        </div>`;
-      hasilEl.hidden = true;
-      return;
+// Event listener filter ukuran K pada Frequent Itemset
+if (filterKEl) {
+  filterKEl.addEventListener("change", (e) => {
+    const selectedK = e.target.value;
+    if (selectedK === "all") {
+      renderItemsets(currentItemsets);
+    } else {
+      const kNum = parseInt(selectedK, 10);
+      const filtered = currentItemsets.filter((item) => item.k === kNum);
+      renderItemsets(filtered);
     }
+  });
+}
 
-    statusEl.innerHTML = "";
-    tampilkan(data);
-    
-    // Smooth scroll ke bagian hasil
-    hasilEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+// Event listeners untuk filter item dan sorting Association Rules
+if (filterRuleItemEl) {
+  filterRuleItemEl.addEventListener("input", () => {
+    renderRules();
+  });
+}
 
-  } catch (err) {
-    statusEl.innerHTML = `
-      <div class="alert-modern error">
-        <i class="fa-solid fa-circle-exclamation fs-5 text-danger"></i>
-        <div><b>Koneksi Terputus:</b> Gagal menghubungi endpoint server Flask.</div>
-      </div>`;
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = originalBtnHtml;
-  }
-});
+if (sortRulesEl) {
+  sortRulesEl.addEventListener("change", () => {
+    renderRules();
+  });
+}
 
-function tampilkan(d) {
-  hasilEl.hidden = false;
-
-  // 1. Ringkasan 4 Stat Cards
-  const ringkasanEl = document.getElementById("ringkasan");
-  ringkasanEl.innerHTML = `
-    <!-- Card 1: Total Transaksi -->
-    <div class="col-12 col-sm-6 col-xl-3">
-      <div class="stat-card emerald">
-        <div class="stat-content">
-          <div class="stat-label">Total Transaksi</div>
-          <div class="stat-value">${d.total_transaksi.toLocaleString()}</div>
-          <div class="stat-desc text-muted">Basis transaksi diuji</div>
-        </div>
-        <div class="stat-icon-wrapper emerald">
-          <i class="fa-solid fa-receipt"></i>
-        </div>
-      </div>
-    </div>
-
-    <!-- Card 2: Frequent Itemset -->
-    <div class="col-12 col-sm-6 col-xl-3">
-      <div class="stat-card slate">
-        <div class="stat-content">
-          <div class="stat-label">Frequent Itemset</div>
-          <div class="stat-value">${d.itemsets.length.toLocaleString()}</div>
-          <div class="stat-desc text-muted">Lolos support &ge; ${d.min_support}</div>
-        </div>
-        <div class="stat-icon-wrapper slate">
-          <i class="fa-solid fa-layer-group"></i>
-        </div>
-      </div>
-    </div>
-
-    <!-- Card 3: Association Rules -->
-    <div class="col-12 col-sm-6 col-xl-3">
-      <div class="stat-card amber">
-        <div class="stat-content">
-          <div class="stat-label">Association Rules</div>
-          <div class="stat-value">${d.rules.length.toLocaleString()}</div>
-          <div class="stat-desc text-muted">Confidence &ge; ${d.min_confidence}</div>
-        </div>
-        <div class="stat-icon-wrapper amber">
-          <i class="fa-solid fa-link"></i>
-        </div>
-      </div>
-    </div>
-
-    <!-- Card 4: Durasi Komputasi -->
-    <div class="col-12 col-sm-6 col-xl-3">
-      <div class="stat-card teal">
-        <div class="stat-content">
-          <div class="stat-label">Waktu Eksekusi</div>
-          <div class="stat-value">${d.durasi} <span class="fs-6 text-muted fw-normal">detik</span></div>
-          <div class="stat-desc text-muted">Apriori Engine Manual</div>
-        </div>
-        <div class="stat-icon-wrapper teal">
-          <i class="fa-solid fa-stopwatch"></i>
-        </div>
-      </div>
-    </div>
-  `;
-
-  // Update header badges
-  const itemsetCountBadge = document.getElementById("itemset-count-badge");
-  if (itemsetCountBadge) {
-    itemsetCountBadge.textContent = `${d.itemsets.length} Itemset Ditemukan`;
-  }
-  const rulesCountBadge = document.getElementById("rules-count-badge");
-  if (rulesCountBadge) {
-    rulesCountBadge.textContent = `${d.rules.length} Aturan Terbentuk`;
-  }
-
-  // 2. Render Tabel Frequent Itemset
+// Fungsi render tabel Frequent Itemset
+function renderItemsets(itemsetsToRender) {
   const tblItemsetBody = document.querySelector("#tbl-itemset tbody");
-  if (d.itemsets.length > 0) {
-    tblItemsetBody.innerHTML = d.itemsets
+  const countBadge = document.getElementById("itemset-count-badge");
+
+  if (countBadge) {
+    if (filterKEl && filterKEl.value !== "all") {
+      countBadge.textContent = `${itemsetsToRender.length} dari ${currentItemsets.length} Itemset (k = ${filterKEl.value})`;
+    } else {
+      countBadge.textContent = `${itemsetsToRender.length} Itemset Ditemukan`;
+    }
+  }
+
+  if (itemsetsToRender.length > 0) {
+    tblItemsetBody.innerHTML = itemsetsToRender
       .map((r) => {
         const itemPills = r.itemset
           .map((itm) => `<span class="badge-item-pill"><i class="fa-solid fa-tag text-muted me-1" style="font-size: 0.65rem;"></i>${esc(itm)}</span>`)
@@ -179,15 +97,53 @@ function tampilkan(d) {
     tblItemsetBody.innerHTML = `<tr>
       <td colspan="4" class="text-center py-4 text-muted">
         <i class="fa-solid fa-circle-exclamation text-warning me-1"></i>
-        Tidak ada frequent itemset yang memenuhi minimum support (${d.min_support}). Coba turunkan nilai minimum support.
+        Tidak ada itemset untuk filter ukuran k ini.
       </td>
     </tr>`;
   }
+}
 
-  // 3. Render Tabel Association Rules
+// Fungsi filter dan sorting Association Rules
+function renderRules() {
   const tblRulesBody = document.querySelector("#tbl-rules tbody");
-  if (d.rules.length > 0) {
-    tblRulesBody.innerHTML = d.rules
+  const countBadge = document.getElementById("rules-count-badge");
+
+  if (!tblRulesBody) return;
+
+  const searchQuery = filterRuleItemEl ? filterRuleItemEl.value.trim().toLowerCase() : "";
+  const sortMode = sortRulesEl ? sortRulesEl.value : "lift-desc";
+
+  // 1. Filter berdasarkan pencarian item (baik di antecedent atau consequent)
+  let filtered = currentRules.filter((r) => {
+    if (!searchQuery) return true;
+    const allItems = [...r.antecedent, ...r.consequent].map((x) => x.toLowerCase());
+    return allItems.some((itm) => itm.includes(searchQuery));
+  });
+
+  // 2. Sorting sesuai pilihan dropdown
+  filtered.sort((a, b) => {
+    if (sortMode === "conf-desc") {
+      return b.confidence - a.confidence || b.lift - a.lift;
+    } else if (sortMode === "supp-desc") {
+      return b.support - a.support || b.confidence - a.confidence;
+    } else {
+      // Default: lift-desc
+      return b.lift - a.lift || b.confidence - a.confidence;
+    }
+  });
+
+  // 3. Update counter badge
+  if (countBadge) {
+    if (searchQuery) {
+      countBadge.textContent = `${filtered.length} dari ${currentRules.length} Aturan ("${esc(searchQuery)}")`;
+    } else {
+      countBadge.textContent = `${filtered.length} Aturan Terbentuk`;
+    }
+  }
+
+  // 4. Render baris tabel
+  if (filtered.length > 0) {
+    tblRulesBody.innerHTML = filtered
       .map((r) => {
         const antePills = r.antecedent
           .map((itm) => `<span class="badge-item-pill"><i class="fa-solid fa-tag text-muted me-1" style="font-size: 0.65rem;"></i>${esc(itm)}</span>`)
@@ -226,12 +182,180 @@ function tampilkan(d) {
     tblRulesBody.innerHTML = `<tr>
       <td colspan="6" class="text-center py-4 text-muted">
         <i class="fa-solid fa-circle-exclamation text-warning me-1"></i>
-        Tidak ada association rules yang memenuhi minimum confidence (${d.min_confidence}). Coba turunkan nilai support atau confidence.
+        ${searchQuery ? `Tidak ada aturan asosiasi yang memuat item "${esc(searchQuery)}".` : "Tidak ada association rules yang memenuhi kriteria."}
       </td>
     </tr>`;
   }
+}
 
-  // 4. Grafik 1: Top 10 Item Terlaris (Emerald Theme)
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("btn-proses");
+  const originalBtnHtml = btn.innerHTML;
+
+  // Nilai input dalam persen (0 - 100%)
+  const supportPercent = parseFloat(form.min_support.value);
+  const confidencePercent = parseFloat(form.min_confidence.value);
+
+  // Validasi batas persentase di sisi client
+  if (isNaN(supportPercent) || supportPercent <= 0 || supportPercent > 100) {
+    statusEl.innerHTML = `
+      <div class="alert-modern error">
+        <i class="fa-solid fa-triangle-exclamation fs-5 text-danger"></i>
+        <div><b>Nilai tidak valid:</b> Minimum Support harus berupa angka antara 0.1% dan 100%.</div>
+      </div>`;
+    return;
+  }
+
+  if (isNaN(confidencePercent) || confidencePercent <= 0 || confidencePercent > 100) {
+    statusEl.innerHTML = `
+      <div class="alert-modern error">
+        <i class="fa-solid fa-triangle-exclamation fs-5 text-danger"></i>
+        <div><b>Nilai tidak valid:</b> Minimum Confidence harus berupa angka antara 1% dan 100%.</div>
+      </div>`;
+    return;
+  }
+
+  // Konversi persen (0-100) ke desimal (0-1) untuk backend API
+  const min_support = supportPercent / 100.0;
+  const min_confidence = confidencePercent / 100.0;
+
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Menghitung Apriori...`;
+  
+  statusEl.innerHTML = `
+    <div class="alert-modern bg-white border shadow-sm">
+      <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+      <span class="text-secondary fw-medium">Sedang memproses algoritma Apriori pada 9.835 transaksi (Support: ${supportPercent}%, Confidence: ${confidencePercent}%)...</span>
+    </div>`;
+
+  try {
+    const res = await fetch("/api/komputasi", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        min_support: min_support,
+        min_confidence: min_confidence,
+      }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      statusEl.innerHTML = `
+        <div class="alert-modern error">
+          <i class="fa-solid fa-triangle-exclamation fs-5 text-danger"></i>
+          <div><b>Gagal memproses data:</b> ${esc(data.error || "Terjadi kesalahan pada server.")}</div>
+        </div>`;
+      hasilEl.hidden = true;
+      return;
+    }
+
+    statusEl.innerHTML = "";
+    tampilkan(data);
+    
+    // Smooth scroll ke bagian hasil
+    hasilEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  } catch (err) {
+    statusEl.innerHTML = `
+      <div class="alert-modern error">
+        <i class="fa-solid fa-circle-exclamation fs-5 text-danger"></i>
+        <div><b>Koneksi Terputus:</b> Gagal menghubungi endpoint server Flask.</div>
+      </div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalBtnHtml;
+  }
+});
+
+function tampilkan(d) {
+  hasilEl.hidden = false;
+  currentItemsets = d.itemsets;
+  currentRules = d.rules;
+
+  const supPercentStr = (d.min_support * 100).toFixed(1);
+  const confPercentStr = (d.min_confidence * 100).toFixed(0);
+
+  // 1. Ringkasan 4 Stat Cards
+  const ringkasanEl = document.getElementById("ringkasan");
+  ringkasanEl.innerHTML = `
+    <!-- Card 1: Total Transaksi -->
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="stat-card emerald">
+        <div class="stat-content">
+          <div class="stat-label">Total Transaksi</div>
+          <div class="stat-value">${d.total_transaksi.toLocaleString()}</div>
+          <div class="stat-desc text-muted">Basis transaksi groceries</div>
+        </div>
+        <div class="stat-icon-wrapper emerald">
+          <i class="fa-solid fa-receipt"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2: Frequent Itemset -->
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="stat-card slate">
+        <div class="stat-content">
+          <div class="stat-label">Frequent Itemset</div>
+          <div class="stat-value">${d.itemsets.length.toLocaleString()}</div>
+          <div class="stat-desc text-muted">Lolos support &ge; ${supPercentStr}%</div>
+        </div>
+        <div class="stat-icon-wrapper slate">
+          <i class="fa-solid fa-layer-group"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Association Rules -->
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="stat-card amber">
+        <div class="stat-content">
+          <div class="stat-label">Association Rules</div>
+          <div class="stat-value">${d.rules.length.toLocaleString()}</div>
+          <div class="stat-desc text-muted">Confidence &ge; ${confPercentStr}%</div>
+        </div>
+        <div class="stat-icon-wrapper amber">
+          <i class="fa-solid fa-link"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 4: Durasi Komputasi -->
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="stat-card teal">
+        <div class="stat-content">
+          <div class="stat-label">Waktu Eksekusi</div>
+          <div class="stat-value">${d.durasi} <span class="fs-6 text-muted fw-normal">detik</span></div>
+          <div class="stat-desc text-muted">Komputasi Algoritma Apriori</div>
+        </div>
+        <div class="stat-icon-wrapper teal">
+          <i class="fa-solid fa-stopwatch"></i>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // 2. Populasi Filter Dropdown K secara dinamis
+  if (filterKEl) {
+    const uniqueKs = [...new Set(d.itemsets.map((x) => x.k))].sort((a, b) => a - b);
+    let optionsHtml = `<option value="all">Semua Ukuran (k)</option>`;
+    uniqueKs.forEach((kVal) => {
+      optionsHtml += `<option value="${kVal}">${kVal}-Itemset (k = ${kVal})</option>`;
+    });
+    filterKEl.innerHTML = optionsHtml;
+    filterKEl.value = "all";
+  }
+
+  // 3. Render Tabel Frequent Itemset
+  renderItemsets(currentItemsets);
+
+  // 4. Render Tabel Association Rules
+  if (filterRuleItemEl) filterRuleItemEl.value = "";
+  if (sortRulesEl) sortRulesEl.value = "lift-desc";
+  renderRules();
+
+  // 5. Grafik 1: Top 10 Item Terlaris (Emerald Theme)
   gambar("chart-top-item", {
     type: "bar",
     data: {
@@ -277,7 +401,7 @@ function tampilkan(d) {
     },
   });
 
-  // 5. Grafik 2: Scatter Support vs Confidence (Warna = Lift Ratio)
+  // 6. Grafik 2: Scatter Support vs Confidence (Warna = Lift Ratio)
   const maxLift = Math.max(1, ...d.rules.map((r) => r.lift || 1));
   gambar("chart-scatter", {
     type: "scatter",
@@ -295,7 +419,6 @@ function tampilkan(d) {
           pointRadius: 6,
           pointHoverRadius: 9,
           backgroundColor: d.rules.map((r) => {
-            // Skema Emerald ke Amber ke Coral berdasarkan nilai lift
             const ratio = Math.min(1, r.lift / maxLift);
             return `rgba(16, 185, 129, ${0.45 + 0.55 * ratio})`;
           }),
@@ -343,7 +466,7 @@ function tampilkan(d) {
     },
   });
 
-  // 6. Grafik 3: Top 10 Rules berdasarkan Lift Ratio
+  // 7. Grafik 3: Top 10 Rules berdasarkan Lift Ratio
   const topRules = d.rules.slice(0, 10);
   gambar("chart-lift", {
     type: "bar",
