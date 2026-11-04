@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Komputasi Apriori{% endblock %}
+
+{% block page_title %}
+  <i class="fa-solid fa-brain text-success"></i> Komputasi Algoritma Apriori
+{% endblock %}
+
+{% block content %}
+<!-- Section: Parameter Input Card -->
+<div class="card-modern mb-4">
+  <div class="card-modern-header">
+    <div>
+      <h2><i class="fa-solid fa-sliders text-success me-2"></i> Parameter Association Mining</h2>
+      <p class="text-muted small mb-0 mt-1">Tentukan ambang batas minimum support dan confidence untuk menyaring pola belanja signifikan.</p>
+    </div>
+    <span class="badge bg-light text-dark border">
+      <i class="fa-solid fa-circle-info text-success me-1"></i> Dataset: 9.835 Transaksi
+    </span>
+  </div>
+
+  <div class="card-modern-body">
+    <form id="form-komputasi">
+      <div class="row g-3 align-items-end">
+        <!-- Min Support -->
+        <div class="col-12 col-md-4">
+          <label class="form-label-modern" for="min_support">
+            <i class="fa-solid fa-chart-pie text-muted me-1"></i> Minimum Support (0 - 1)
+          </label>
+          <div class="input-group">
+            <span class="input-group-text bg-light text-muted border-end-0">
+              <i class="fa-solid fa-filter"></i>
+            </span>
+            <input type="number" id="min_support" name="min_support" step="0.001" min="0.001" max="1" value="0.01" 
+                   required class="form-control form-control-modern border-start-0" placeholder="0.01">
+          </div>
+          <div class="form-text text-muted small mt-1">
+            Contoh <code>0.01</code> = minimal muncul di 1% transaksi (~98 transaksi).
+          </div>
+        </div>
+
+        <!-- Min Confidence -->
+        <div class="col-12 col-md-4">
+          <label class="form-label-modern" for="min_confidence">
+            <i class="fa-solid fa-gauge-high text-muted me-1"></i> Minimum Confidence (0 - 1)
+          </label>
+          <div class="input-group">
+            <span class="input-group-text bg-light text-muted border-end-0">
+              <i class="fa-solid fa-bullseye"></i>
+            </span>
+            <input type="number" id="min_confidence" name="min_confidence" step="0.01" min="0.01" max="1" value="0.3" 
+                   required class="form-control form-control-modern border-start-0" placeholder="0.3">
+          </div>
+          <div class="form-text text-muted small mt-1">
+            Contoh <code>0.30</code> = tingkat kepastian relasi minimal 30%.
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="col-12 col-md-4">
+          <button type="submit" id="btn-proses" class="btn btn-emerald w-100 py-2">
+            <i class="fa-solid fa-play"></i> Proses Mining Apriori
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Status Loading / Error Banner -->
+<div id="status" class="mb-4"></div>
+
+<!-- Results Section (Initially Hidden) -->
+<section id="hasil" hidden>
+  <!-- Summary Stat Cards -->
+  <div id="ringkasan" class="row g-3 mb-4"></div>
+
+  <!-- Frequent Itemset Section -->
+  <div class="card-modern mb-4">
+    <div class="card-modern-header">
+      <div class="d-flex align-items-center gap-2">
+        <h2><i class="fa-solid fa-layer-group text-success me-1"></i> Frequent Itemset (Kandidat Lolos Support)</h2>
+      </div>
+      <span class="text-muted small" id="itemset-count-badge">Tabel Itemset</span>
+    </div>
+
+    <div class="card-modern-body p-0">
+      <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+        <table id="tbl-itemset" class="table-custom">
+          <thead style="position: sticky; top: 0; z-index: 5; background-color: #F8FAFC;">
+            <tr>
+              <th>Itemset (Kombinasi Produk)</th>
+              <th style="width: 100px; text-align: center;">Tingkat (k)</th>
+              <th style="width: 140px; text-align: center;">Frekuensi Muncul</th>
+              <th style="width: 140px; text-align: center;">Support Value</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Association Rules Section -->
+  <div class="card-modern mb-4">
+    <div class="card-modern-header">
+      <div class="d-flex align-items-center gap-2">
+        <h2><i class="fa-solid fa-link text-success me-1"></i> Association Rules (Aturan Asosiasi Pola Belanja)</h2>
+      </div>
+      <span class="text-muted small" id="rules-count-badge">Tabel Rules</span>
+    </div>
+
+    <div class="card-modern-body p-0">
+      <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+        <table id="tbl-rules" class="table-custom">
+          <thead style="position: sticky; top: 0; z-index: 5; background-color: #F8FAFC;">
+            <tr>
+              <th style="min-width: 200px;">Antecedent (Jika Beli)</th>
+              <th style="width: 40px; text-align: center;"></th>
+              <th style="min-width: 200px;">Consequent (Maka Beli)</th>
+              <th style="width: 130px; text-align: center;">Support</th>
+              <th style="width: 130px; text-align: center;">Confidence</th>
+              <th style="width: 130px; text-align: center;">Lift Ratio</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts & Visual Analytics Section -->
+  <div class="row g-4">
+    <!-- Chart 1: Top 10 Items -->
+    <div class="col-12 col-lg-6">
+      <div class="card-modern h-100">
+        <div class="card-modern-header">
+          <h2><i class="fa-solid fa-chart-column text-success me-1"></i> Top 10 Item Terlaris</h2>
+          <span class="badge bg-light text-muted border">Frekuensi Item</span>
+        </div>
+        <div class="card-modern-body">
+          <div style="position: relative; height: 320px;">
+            <canvas id="chart-top-item"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart 2: Scatter Plot Support vs Confidence -->
+    <div class="col-12 col-lg-6">
+      <div class="card-modern h-100">
+        <div class="card-modern-header">
+          <h2><i class="fa-solid fa-chart-scatter text-warning me-1"></i> Support vs Confidence</h2>
+          <span class="badge bg-light text-muted border">Warna: Lift Ratio</span>
+        </div>
+        <div class="card-modern-body">
+          <div style="position: relative; height: 320px;">
+            <canvas id="chart-scatter"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart 3: Top 10 Rules by Lift Ratio -->
+    <div class="col-12">
+      <div class="card-modern">
+        <div class="card-modern-header">
+          <h2><i class="fa-solid fa-fire text-danger me-1"></i> Top 10 Association Rules berdasarkan Nilai Lift</h2>
+          <span class="badge-lift">Kekuatan Asosiasi Produk</span>
+        </div>
+        <div class="card-modern-body">
+          <div style="position: relative; height: 360px;">
+            <canvas id="chart-lift"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="{{ url_for('static', filename='js/compute.js') }}"></script>
+{% endblock %}

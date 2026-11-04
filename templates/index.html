@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}Dataset Transaksi{% endblock %}
+
+{% block page_title %}
+  <i class="fa-solid fa-table-list text-success"></i> Dataset Transaksi Groceries
+{% endblock %}
+
+{% block content %}
+<!-- Section: Stat Cards -->
+<div class="row g-3 mb-4">
+  <!-- Card 1: Total Transaksi -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card emerald">
+      <div class="stat-content">
+        <div class="stat-label">Total Transaksi</div>
+        <div class="stat-value">{{ "{:,}".format(total) }}</div>
+        <div class="stat-desc text-muted">Data tersimpan di database</div>
+      </div>
+      <div class="stat-icon-wrapper emerald">
+        <i class="fa-solid fa-receipt"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card 2: Baris Ditampilkan -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card slate">
+      <div class="stat-content">
+        <div class="stat-label">Baris Halaman Ini</div>
+        <div class="stat-value">{{ rows|length }}</div>
+        <div class="stat-desc text-muted">20 transaksi per halaman</div>
+      </div>
+      <div class="stat-icon-wrapper slate">
+        <i class="fa-solid fa-layer-group"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card 3: Rata-rata Item per Transaksi -->
+  {% set ns = namespace(total_item=0) %}
+  {% for r in rows %}
+    {% set ns.total_item = ns.total_item + r.jumlah %}
+  {% endfor %}
+  {% set avg_items = (ns.total_item / (rows|length)) if (rows|length > 0) else 0 %}
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card amber">
+      <div class="stat-content">
+        <div class="stat-label">Rata-rata Item/Trx</div>
+        <div class="stat-value">{{ "%.1f"|format(avg_items) }}</div>
+        <div class="stat-desc text-muted">Rerata item belanja</div>
+      </div>
+      <div class="stat-icon-wrapper amber">
+        <i class="fa-solid fa-basket-shopping"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card 4: Navigasi Halaman -->
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card teal">
+      <div class="stat-content">
+        <div class="stat-label">Halaman Aktif</div>
+        <div class="stat-value">{{ page }} <span class="fs-6 text-muted fw-normal">/ {{ total_page }}</span></div>
+        <div class="stat-desc text-muted">{% if q %}Hasil pencarian: "{{ q }}"{% else %}Seluruh transaksi{% endif %}</div>
+      </div>
+      <div class="stat-icon-wrapper teal">
+        <i class="fa-solid fa-file-invoice"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section: Filter & Actions Toolbar -->
+<div class="card-modern">
+  <div class="card-modern-body p-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <!-- Search Form -->
+      <form class="d-flex align-items-center gap-2 flex-grow-1" method="get" action="{{ url_for('index') }}" style="max-width: 600px;">
+        <div class="input-group">
+          <span class="input-group-text bg-white border-end-0 text-muted">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </span>
+          <input type="text" name="q" value="{{ q }}" class="form-control form-control-modern border-start-0" 
+                 placeholder="Cari item (misal: whole milk, yogurt) atau ID transaksi..." aria-label="Search">
+          <button class="btn btn-emerald" type="submit">
+            <i class="fa-solid fa-magnifying-glass"></i> Cari
+          </button>
+        </div>
+        {% if q %}
+          <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm text-nowrap" title="Reset filter">
+            <i class="fa-solid fa-rotate-left"></i> Reset
+          </a>
+        {% endif %}
+      </form>
+
+      <!-- Add Data Action Button -->
+      <div>
+        <a class="btn btn-emerald" href="{{ url_for('tambah') }}">
+          <i class="fa-solid fa-circle-plus"></i> Tambah Transaksi
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section: Table Dataset -->
+<div class="card-modern">
+  <div class="card-modern-header">
+    <div class="d-flex align-items-center gap-2">
+      <h2><i class="fa-solid fa-table text-success"></i> Tabel Transaksi Market Basket</h2>
+      {% if q %}
+        <span class="badge bg-light text-dark border ms-2">Filter: "{{ q }}"</span>
+      {% endif %}
+    </div>
+    <span class="text-muted small">Total: <b>{{ "{:,}".format(total) }}</b> transaksi</span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table-custom">
+      <thead>
+        <tr>
+          <th style="width: 100px;">ID Transaksi</th>
+          <th style="width: 140px;">Tanggal</th>
+          <th>Daftar Item Belanja</th>
+          <th style="width: 130px; text-align: center;">Jumlah Item</th>
+          <th style="width: 170px; text-align: center;">Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td>
+            <span class="badge-tid">T{{ '%04d' % r.id }}</span>
+          </td>
+          <td>
+            <span class="text-secondary small">
+              <i class="fa-regular fa-calendar me-1 text-muted"></i>
+              {{ r.tanggal or '-' }}
+            </span>
+          </td>
+          <td>
+            <div class="d-flex flex-wrap gap-1">
+              {% if r['items'] %}
+                {% for item in r['items'].split(', ') %}
+                  <span class="badge-item-pill">
+                    <i class="fa-solid fa-tag text-muted me-1" style="font-size: 0.65rem;"></i>{{ item }}
+                  </span>
+                {% endfor %}
+              {% else %}
+                <span class="text-muted fst-italic">Kosong</span>
+              {% endif %}
+            </div>
+          </td>
+          <td style="text-align: center;">
+            <span class="badge-emerald">
+              <i class="fa-solid fa-cart-shopping me-1"></i> {{ r.jumlah }}
+            </span>
+          </td>
+          <td style="text-align: center;">
+            <div class="d-inline-flex gap-1 align-items-center justify-content-center">
+              <a href="{{ url_for('ubah', tid=r.id) }}" class="btn-outline-emerald btn-sm" title="Ubah data">
+                <i class="fa-regular fa-pen-to-square"></i> Ubah
+              </a>
+              <form method="post" action="{{ url_for('hapus', tid=r.id) }}" class="d-inline m-0"
+                    onsubmit="return confirm('Apakah Anda yakin ingin menghapus transaksi T{{ '%04d' % r.id }}?')">
+                <button type="submit" class="btn-outline-danger btn-sm" title="Hapus transaksi">
+                  <i class="fa-regular fa-trash-can"></i> Hapus
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center py-5">
+            <div class="text-muted">
+              <i class="fa-solid fa-inbox fa-3x mb-3 text-secondary opacity-50"></i>
+              <p class="mb-1 fw-bold">Data transaksi tidak ditemukan.</p>
+              <p class="small">Coba ubah kata kunci pencarian Anda atau tambahkan transaksi baru.</p>
+              {% if q %}
+                <a href="{{ url_for('index') }}" class="btn btn-outline-emerald btn-sm mt-2">
+                  <i class="fa-solid fa-rotate-left"></i> Tampilkan Semua Data
+                </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Section: Pagination -->
+{% if total_page > 1 %}
+<div class="pagination-modern">
+  {% if page > 1 %}
+    <a href="{{ url_for('index', page=page-1, q=q) }}" class="pagination-btn">
+      <i class="fa-solid fa-chevron-left"></i> Sebelumnya
+    </a>
+  {% endif %}
+
+  <span class="pagination-info">
+    Halaman <b>{{ page }}</b> dari <b>{{ total_page }}</b>
+  </span>
+
+  {% if page < total_page %}
+    <a href="{{ url_for('index', page=page+1, q=q) }}" class="pagination-btn">
+      Berikutnya <i class="fa-solid fa-chevron-right"></i>
+    </a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}
