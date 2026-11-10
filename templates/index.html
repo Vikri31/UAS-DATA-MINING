@@ -214,19 +214,46 @@
 <!-- Section: Pagination (Preserving sort & q) -->
 {% if total_page > 1 %}
 <div class="pagination-modern">
+  <!-- Tombol Halaman Pertama (jika bukan di dekat halaman 1) -->
+  {% if page > 2 %}
+    <a href="{{ url_for('index', page=1, q=q, sort=sort) }}" class="pagination-btn" title="Halaman Pertama">
+      <i class="fa-solid fa-angles-left"></i>
+    </a>
+  {% endif %}
+
+  <!-- Tombol Halaman Sebelumnya -->
   {% if page > 1 %}
     <a href="{{ url_for('index', page=page-1, q=q, sort=sort) }}" class="pagination-btn">
       <i class="fa-solid fa-chevron-left"></i> Sebelumnya
     </a>
   {% endif %}
 
-  <span class="pagination-info">
-    Halaman <b>{{ page }}</b> dari <b>{{ total_page }}</b>
-  </span>
+  <!-- Textbox Lompat ke Halaman Tertentu -->
+  <form method="get" action="{{ url_for('index') }}" class="d-inline-flex align-items-center gap-1 mx-1 my-1">
+    {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+    {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+    <span class="pagination-info text-nowrap">Halaman</span>
+    <input type="number" name="page" min="1" max="{{ total_page }}" value="{{ page }}" 
+           class="form-control form-control-sm form-control-modern text-center fw-bold" 
+           style="width: 76px; padding: 0.35rem 0.5rem;" 
+           title="Ketik nomor halaman lalu tekan Enter atau klik tombol panah">
+    <span class="pagination-info text-nowrap">dari <b>{{ total_page }}</b></span>
+    <button type="submit" class="btn btn-emerald btn-sm py-1 px-2" title="Lompat ke halaman ini">
+      <i class="fa-solid fa-arrow-right"></i>
+    </button>
+  </form>
 
+  <!-- Tombol Halaman Berikutnya -->
   {% if page < total_page %}
     <a href="{{ url_for('index', page=page+1, q=q, sort=sort) }}" class="pagination-btn">
       Berikutnya <i class="fa-solid fa-chevron-right"></i>
+    </a>
+  {% endif %}
+
+  <!-- Tombol Halaman Terakhir -->
+  {% if page < total_page - 1 %}
+    <a href="{{ url_for('index', page=total_page, q=q, sort=sort) }}" class="pagination-btn" title="Halaman Terakhir ({{ total_page }})">
+      <i class="fa-solid fa-angles-right"></i>
     </a>
   {% endif %}
 </div>

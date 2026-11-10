@@ -24,26 +24,47 @@ def parse_items(raw):
 # ------------------------------------------------------------------
 @app.route("/")
 def index():
-    q = request.args.get("q", "").strip().lower()
+    q_raw = request.args.get("q", "").strip()
+    q_lower = q_raw.lower()
     sort = request.args.get("sort", "desc").strip().lower()
-    page = max(request.args.get("page", 1, type=int), 1)
-    offset = (page - 1) * PER_PAGE
 
     conn = get_conn()
 
     kondisi = ""
     params = []
-    if q:
-        kondisi = """
-            WHERE t.id IN (
-                SELECT id_transaksi FROM item_transaksi WHERE nama_item LIKE ?
-            ) OR CAST(t.id AS TEXT) = ?
-        """
-        params = [f"%{q}%", q]
+    if q_raw:
+        # Cek apakah pencarian berupa ID transaksi (misal: "T9838", "t9838", "T0001", "9838")
+        clean_id = None
+        q_id_candidate = q_lower.lstrip("t").strip()
+        if q_id_candidate.isdigit():
+            clean_id = int(q_id_candidate)
+
+        if clean_id is not None:
+            kondisi = """
+                WHERE t.id = ? OR t.id IN (
+                    SELECT id_transaksi FROM item_transaksi WHERE nama_item LIKE ?
+                )
+            """
+            params = [clean_id, f"%{q_lower}%"]
+        else:
+            kondisi = """
+                WHERE t.id IN (
+                    SELECT id_transaksi FROM item_transaksi WHERE nama_item LIKE ?
+                )
+            """
+            params = [f"%{q_lower}%"]
 
     total = conn.execute(
         f"SELECT COUNT(*) FROM transaksi t {kondisi}", params
     ).fetchone()[0]
+
+    total_page = max((total + PER_PAGE - 1) // PER_PAGE, 1)
+    try:
+        req_page = int(request.args.get("page", 1))
+    except (ValueError, TypeError):
+        req_page = 1
+    page = min(max(req_page, 1), total_page)
+    offset = (page - 1) * PER_PAGE
 
     # Sort data berdasarkan data terbaru (ID DESC) secara default, atau terlama (ID ASC)
     order_by = "ORDER BY t.id DESC" if sort != "asc" else "ORDER BY t.id ASC"
@@ -64,9 +85,8 @@ def index():
     ).fetchall()
     conn.close()
 
-    total_page = max((total + PER_PAGE - 1) // PER_PAGE, 1)
     return render_template(
-        "index.html", rows=rows, q=q, page=page, total=total, total_page=total_page, sort=sort
+        "index.html", rows=rows, q=q_raw, page=page, total=total, total_page=total_page, sort=sort
     )
 
 
