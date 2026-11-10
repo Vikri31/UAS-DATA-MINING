@@ -1,0 +1,24 @@
+# Virtual Environment (JANGAN di-push ke GitHub)
+venv/
+env/
+ENV/
+.env
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS Temporary Files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
