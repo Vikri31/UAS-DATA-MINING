@@ -660,6 +660,38 @@ body {
   white-space: nowrap;
 }
 
+/* Interactive Item Chips for Form */
+.item-chip {
+  background-color: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  color: #334155;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  user-select: none;
+}
+
+.item-chip:hover {
+  background-color: #F1F5F9;
+  border-color: #94A3B8;
+  color: #0F172A;
+  transform: translateY(-1px);
+}
+
+.item-chip.active {
+  background-color: var(--primary-emerald) !important;
+  border-color: var(--primary-emerald-dark) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+  font-weight: 600;
+}
+
 .badge-tid {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   background-color: #F8FAFC;

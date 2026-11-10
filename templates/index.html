@@ -55,13 +55,16 @@
     </div>
   </div>
 
-  <!-- Card 4: Navigasi Halaman -->
+  <!-- Card 4: Navigasi & Urutan -->
   <div class="col-12 col-sm-6 col-xl-3">
     <div class="stat-card teal">
       <div class="stat-content">
-        <div class="stat-label">Halaman Aktif</div>
+        <div class="stat-label">Urutan & Halaman</div>
         <div class="stat-value">{{ page }} <span class="fs-6 text-muted fw-normal">/ {{ total_page }}</span></div>
-        <div class="stat-desc text-muted">{% if q %}Hasil pencarian: "{{ q }}"{% else %}Seluruh transaksi{% endif %}</div>
+        <div class="stat-desc text-muted">
+          <i class="fa-solid fa-arrow-down-wide-short me-1 text-teal"></i>
+          {% if sort == 'asc' %}Data Terlama (ID 1..){% else %}Data Terbaru (ID &darr;){% endif %}
+        </div>
       </div>
       <div class="stat-icon-wrapper teal">
         <i class="fa-solid fa-file-invoice"></i>
@@ -70,24 +73,38 @@
   </div>
 </div>
 
-<!-- Section: Filter & Actions Toolbar -->
+<!-- Section: Filter, Sorting & Actions Toolbar -->
 <div class="card-modern">
   <div class="card-modern-body p-3">
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-      <!-- Search Form -->
-      <form class="d-flex align-items-center gap-2 flex-grow-1" method="get" action="{{ url_for('index') }}" style="max-width: 600px;">
-        <div class="input-group">
+      <!-- Search & Sort Form -->
+      <form class="d-flex flex-wrap align-items-center gap-2 flex-grow-1" method="get" action="{{ url_for('index') }}" style="max-width: 780px;">
+        <!-- Search Input -->
+        <div class="input-group" style="flex: 1; min-width: 250px;">
           <span class="input-group-text bg-white border-end-0 text-muted">
             <i class="fa-solid fa-magnifying-glass"></i>
           </span>
           <input type="text" name="q" value="{{ q }}" class="form-control form-control-modern border-start-0" 
-                 placeholder="Cari item (misal: whole milk, yogurt) atau ID transaksi..." aria-label="Search">
+                 placeholder="Cari item (misal: whole milk) atau ID..." aria-label="Search">
           <button class="btn btn-emerald" type="submit">
             <i class="fa-solid fa-magnifying-glass"></i> Cari
           </button>
         </div>
-        {% if q %}
-          <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm text-nowrap" title="Reset filter">
+
+        <!-- Sort Filter Dropdown -->
+        <div class="d-flex align-items-center gap-1">
+          <label for="sortSelect" class="small fw-semibold text-muted text-nowrap mb-0 d-none d-sm-inline">
+            <i class="fa-solid fa-arrow-down-wide-short text-success me-1"></i> Urutan:
+          </label>
+          <select name="sort" id="sortSelect" class="form-select form-select-modern" style="width: auto; min-width: 175px;" onchange="this.form.submit()">
+            <option value="desc" {% if sort != 'asc' %}selected{% endif %}>Data Terbaru (Default)</option>
+            <option value="asc" {% if sort == 'asc' %}selected{% endif %}>Data Terlama (ID 1..)</option>
+          </select>
+        </div>
+
+        <!-- Reset Button -->
+        {% if q or sort == 'asc' %}
+          <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm text-nowrap" title="Reset filter & urutan">
             <i class="fa-solid fa-rotate-left"></i> Reset
           </a>
         {% endif %}
@@ -105,12 +122,15 @@
 
 <!-- Section: Table Dataset -->
 <div class="card-modern">
-  <div class="card-modern-header">
+  <div class="card-modern-header flex-wrap gap-2">
     <div class="d-flex align-items-center gap-2">
       <h2><i class="fa-solid fa-table text-success"></i> Tabel Transaksi Market Basket</h2>
       {% if q %}
         <span class="badge bg-light text-dark border ms-2">Filter: "{{ q }}"</span>
       {% endif %}
+      <span class="badge bg-emerald-subtle text-success border ms-1">
+        {% if sort == 'asc' %}Urut: Terlama (ID Naik){% else %}Urut: Terbaru (ID Turun){% endif %}
+      </span>
     </div>
     <span class="text-muted small">Total: <b>{{ "{:,}".format(total) }}</b> transaksi</span>
   </div>
@@ -119,7 +139,7 @@
     <table class="table-custom">
       <thead>
         <tr>
-          <th style="width: 100px;">ID Transaksi</th>
+          <th style="width: 110px;">ID Transaksi</th>
           <th style="width: 140px;">Tanggal</th>
           <th>Daftar Item Belanja</th>
           <th style="width: 130px; text-align: center;">Jumlah Item</th>
@@ -191,11 +211,11 @@
   </div>
 </div>
 
-<!-- Section: Pagination -->
+<!-- Section: Pagination (Preserving sort & q) -->
 {% if total_page > 1 %}
 <div class="pagination-modern">
   {% if page > 1 %}
-    <a href="{{ url_for('index', page=page-1, q=q) }}" class="pagination-btn">
+    <a href="{{ url_for('index', page=page-1, q=q, sort=sort) }}" class="pagination-btn">
       <i class="fa-solid fa-chevron-left"></i> Sebelumnya
     </a>
   {% endif %}
@@ -205,7 +225,7 @@
   </span>
 
   {% if page < total_page %}
-    <a href="{{ url_for('index', page=page+1, q=q) }}" class="pagination-btn">
+    <a href="{{ url_for('index', page=page+1, q=q, sort=sort) }}" class="pagination-btn">
       Berikutnya <i class="fa-solid fa-chevron-right"></i>
     </a>
   {% endif %}

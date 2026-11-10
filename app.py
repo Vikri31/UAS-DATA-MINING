@@ -20,11 +20,12 @@ def parse_items(raw):
 
 
 # ------------------------------------------------------------------
-# 1. LIST DATASET + PENCARIAN
+# 1. LIST DATASET + PENCARIAN + SORTING TERBARU
 # ------------------------------------------------------------------
 @app.route("/")
 def index():
     q = request.args.get("q", "").strip().lower()
+    sort = request.args.get("sort", "desc").strip().lower()
     page = max(request.args.get("page", 1, type=int), 1)
     offset = (page - 1) * PER_PAGE
 
@@ -44,6 +45,9 @@ def index():
         f"SELECT COUNT(*) FROM transaksi t {kondisi}", params
     ).fetchone()[0]
 
+    # Sort data berdasarkan data terbaru (ID DESC) secara default, atau terlama (ID ASC)
+    order_by = "ORDER BY t.id DESC" if sort != "asc" else "ORDER BY t.id ASC"
+
     rows = conn.execute(
         f"""
         SELECT t.id, t.tanggal,
@@ -53,7 +57,7 @@ def index():
         LEFT JOIN item_transaksi i ON i.id_transaksi = t.id
         {kondisi}
         GROUP BY t.id
-        ORDER BY t.id
+        {order_by}
         LIMIT ? OFFSET ?
         """,
         params + [PER_PAGE, offset],
@@ -62,7 +66,7 @@ def index():
 
     total_page = max((total + PER_PAGE - 1) // PER_PAGE, 1)
     return render_template(
-        "index.html", rows=rows, q=q, page=page, total=total, total_page=total_page
+        "index.html", rows=rows, q=q, page=page, total=total, total_page=total_page, sort=sort
     )
 
 
@@ -71,15 +75,18 @@ def index():
 # ------------------------------------------------------------------
 @app.route("/transaksi/tambah", methods=["GET", "POST"])
 def tambah():
+    conn = get_conn()
+    all_items = [r[0] for r in conn.execute("SELECT DISTINCT nama_item FROM item_transaksi ORDER BY nama_item").fetchall()]
+
     if request.method == "POST":
         items = parse_items(request.form.get("items", ""))
         tanggal = request.form.get("tanggal") or None
 
         if len(items) < 1:
+            conn.close()
             flash("Isi minimal satu item.", "error")
-            return render_template("form.html", mode="tambah", data=None)
+            return render_template("form.html", mode="tambah", data=None, all_items=all_items)
 
-        conn = get_conn()
         if tanggal:
             cur = conn.execute("INSERT INTO transaksi (tanggal) VALUES (?)", (tanggal,))
         else:
@@ -95,12 +102,14 @@ def tambah():
         flash("Transaksi berhasil ditambahkan.", "success")
         return redirect(url_for("index"))
 
-    return render_template("form.html", mode="tambah", data=None)
+    conn.close()
+    return render_template("form.html", mode="tambah", data=None, all_items=all_items)
 
 
 @app.route("/transaksi/<int:tid>/ubah", methods=["GET", "POST"])
 def ubah(tid):
     conn = get_conn()
+    all_items = [r[0] for r in conn.execute("SELECT DISTINCT nama_item FROM item_transaksi ORDER BY nama_item").fetchall()]
     trx = conn.execute("SELECT * FROM transaksi WHERE id = ?", (tid,)).fetchone()
     if trx is None:
         conn.close()
@@ -136,7 +145,7 @@ def ubah(tid):
         "tanggal": trx["tanggal"],
         "items": ", ".join(r["nama_item"] for r in items),
     }
-    return render_template("form.html", mode="ubah", data=data)
+    return render_template("form.html", mode="ubah", data=data, all_items=all_items)
 
 
 @app.route("/transaksi/<int:tid>/hapus", methods=["POST"])
@@ -202,4 +211,3 @@ def api_komputasi():
 
 if __name__ == "__main__":
     app.run(debug=True)
-

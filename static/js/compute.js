@@ -194,8 +194,12 @@ form.addEventListener("submit", async (e) => {
   const originalBtnHtml = btn.innerHTML;
 
   // Nilai input dalam persen (0 - 100%)
-  const supportPercent = parseFloat(form.min_support.value);
-  const confidencePercent = parseFloat(form.min_confidence.value);
+  // Jika dikosongkan, gunakan shadow value default (1% Support & 30% Confidence)
+  const supRaw = form.min_support.value ? form.min_support.value.trim() : "";
+  const confRaw = form.min_confidence.value ? form.min_confidence.value.trim() : "";
+
+  const supportPercent = supRaw === "" ? 1.0 : parseFloat(supRaw);
+  const confidencePercent = confRaw === "" ? 30.0 : parseFloat(confRaw);
 
   // Validasi batas persentase di sisi client
   if (isNaN(supportPercent) || supportPercent <= 0 || supportPercent > 100) {

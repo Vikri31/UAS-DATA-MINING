@@ -30,8 +30,8 @@
             <span class="input-group-text bg-light text-muted border-end-0">
               <i class="fa-solid fa-percent"></i>
             </span>
-            <input type="number" id="min_support" name="min_support" step="0.1" min="0.1" max="100" value="1" 
-                   required class="form-control form-control-modern border-start-0" placeholder="1" style="height: 44px;">
+            <input type="number" id="min_support" name="min_support" step="0.1" min="0.1" max="100" 
+                   class="form-control form-control-modern border-start-0" placeholder="Contoh: 1" style="height: 44px;">
           </div>
         </div>
 
@@ -44,8 +44,8 @@
             <span class="input-group-text bg-light text-muted border-end-0">
               <i class="fa-solid fa-bullseye"></i>
             </span>
-            <input type="number" id="min_confidence" name="min_confidence" step="1" min="1" max="100" value="30" 
-                   required class="form-control form-control-modern border-start-0" placeholder="30" style="height: 44px;">
+            <input type="number" id="min_confidence" name="min_confidence" step="1" min="1" max="100" 
+                   class="form-control form-control-modern border-start-0" placeholder="Contoh: 30" style="height: 44px;">
           </div>
         </div>
 
@@ -72,7 +72,7 @@
         </div>
         <div class="text-secondary">
           <i class="fa-regular fa-lightbulb text-warning me-1"></i>
-          Tip: Naikkan support jika hasil terlalu banyak, turunkan jika ingin mencari relasi langka.
+          Tip: Jika dikosongkan, sistem otomatis memakai nilai default (1% Support & 30% Confidence).
         </div>
       </div>
     </form>
