@@ -1,7 +1,12 @@
 ekstrak file zip
 copy kan kode berikut ke terminal powershell yang ada di vscode
 
+jika baru pertama kali mendownload, copy kode berikut
+
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+python app.py
+
+jika ingin menjalankan web server, cukup ketikkan
 python app.py
