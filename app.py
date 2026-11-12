@@ -1,3 +1,5 @@
+import calendar
+from datetime import datetime
 import time
 
 from flask import (
@@ -13,24 +15,101 @@ app.secret_key = "ganti-dengan-secret-key-kamu"
 PER_PAGE = 20
 init_db()
 
+NAMA_BULAN = {
+    1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
+    5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
+    9: "September", 10: "Oktober", 11: "November", 12: "Desember",
+}
+
 
 def parse_items(raw):
     """'Susu, roti , Susu' -> ['roti', 'susu'] (bersih, unik, terurut)."""
     return sorted({x.strip().lower() for x in raw.split(",") if x.strip()})
 
 
+def format_month_label(ym):
+    """'2025-01' -> 'Januari 2025'."""
+    try:
+        dt = datetime.strptime(ym, "%Y-%m")
+        return f"{NAMA_BULAN[dt.month]} {dt.year}"
+    except ValueError:
+        return ym
+
+
+def get_month_options(conn):
+    """Ambil daftar bulan unik (YYYY-MM) yang ada di tabel transaksi."""
+    rows = conn.execute(
+        """
+        SELECT DISTINCT substr(tanggal, 1, 7) AS ym
+        FROM transaksi
+        WHERE tanggal IS NOT NULL AND length(tanggal) >= 7
+        ORDER BY ym ASC
+        """
+    ).fetchall()
+    return [{"value": r["ym"], "label": format_month_label(r["ym"])} for r in rows]
+
+
+def resolve_date_range(start_date_raw, end_date_raw, start_month_raw="", end_month_raw=""):
+    """
+    Validasi dan konversi filter bulan (YYYY-MM) / tanggal (YYYY-MM-DD) menjadi (start_date, end_date, error).
+    Tanggal spesifik lebih diprioritaskan jika keduanya terisi.
+    """
+    start_date = (start_date_raw or "").strip() or None
+    end_date = (end_date_raw or "").strip() or None
+    start_month = (start_month_raw or "").strip()
+    end_month = (end_month_raw or "").strip()
+
+    if not start_date and start_month:
+        try:
+            dt = datetime.strptime(start_month, "%Y-%m")
+            start_date = f"{dt.year:04d}-{dt.month:02d}-01"
+        except ValueError:
+            return None, None, "Format bulan mulai tidak valid (gunakan YYYY-MM)."
+
+    if not end_date and end_month:
+        try:
+            dt = datetime.strptime(end_month, "%Y-%m")
+            last_day = calendar.monthrange(dt.year, dt.month)[1]
+            end_date = f"{dt.year:04d}-{dt.month:02d}-{last_day:02d}"
+        except ValueError:
+            return None, None, "Format bulan akhir tidak valid (gunakan YYYY-MM)."
+
+    for label, val in [("tanggal mulai", start_date), ("tanggal akhir", end_date)]:
+        if val:
+            try:
+                datetime.strptime(val, "%Y-%m-%d")
+            except ValueError:
+                return None, None, f"Format {label} tidak valid (gunakan YYYY-MM-DD)."
+
+    if start_date and end_date and start_date > end_date:
+        return start_date, end_date, "Tanggal mulai tidak boleh lebih besar daripada tanggal akhir."
+
+    return start_date, end_date, None
+
+
 # ------------------------------------------------------------------
-# 1. LIST DATASET + PENCARIAN + SORTING TERBARU
+# 1. LIST DATASET + PENCARIAN + FILTER PERIODE + SORTING
 # ------------------------------------------------------------------
 @app.route("/")
 def index():
     q_raw = request.args.get("q", "").strip()
     q_lower = q_raw.lower()
     sort = request.args.get("sort", "desc").strip().lower()
+    start_month = request.args.get("start_month", "").strip()
+    end_month = request.args.get("end_month", "").strip()
+    start_date_raw = request.args.get("start_date", "").strip()
+    end_date_raw = request.args.get("end_date", "").strip()
+
+    start_date, end_date, date_err = resolve_date_range(
+        start_date_raw, end_date_raw, start_month, end_month
+    )
+    if date_err:
+        flash(date_err, "error")
 
     conn = get_conn()
+    month_options = get_month_options(conn)
 
-    kondisi = ""
+    where_clauses = []
     params = []
     if q_raw:
         # Cek apakah pencarian berupa ID transaksi (misal: "T9838", "t9838", "T0001", "9838")
@@ -40,19 +119,28 @@ def index():
             clean_id = int(q_id_candidate)
 
         if clean_id is not None:
-            kondisi = """
-                WHERE t.id = ? OR t.id IN (
+            where_clauses.append(
+                """(t.id = ? OR t.id IN (
                     SELECT id_transaksi FROM item_transaksi WHERE nama_item LIKE ?
-                )
-            """
-            params = [clean_id, f"%{q_lower}%"]
+                ))"""
+            )
+            params.extend([clean_id, f"%{q_lower}%"])
         else:
-            kondisi = """
-                WHERE t.id IN (
+            where_clauses.append(
+                """t.id IN (
                     SELECT id_transaksi FROM item_transaksi WHERE nama_item LIKE ?
-                )
-            """
-            params = [f"%{q_lower}%"]
+                )"""
+            )
+            params.append(f"%{q_lower}%")
+
+    if start_date:
+        where_clauses.append("t.tanggal >= ?")
+        params.append(start_date)
+    if end_date:
+        where_clauses.append("t.tanggal <= ?")
+        params.append(end_date)
+
+    kondisi = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
     total = conn.execute(
         f"SELECT COUNT(*) FROM transaksi t {kondisi}", params
@@ -66,8 +154,13 @@ def index():
     page = min(max(req_page, 1), total_page)
     offset = (page - 1) * PER_PAGE
 
-    # Sort data berdasarkan data terbaru (ID DESC) secara default, atau terlama (ID ASC)
-    order_by = "ORDER BY t.id DESC" if sort != "asc" else "ORDER BY t.id ASC"
+    order_map = {
+        "desc": "ORDER BY t.id DESC",
+        "asc": "ORDER BY t.id ASC",
+        "date_desc": "ORDER BY t.tanggal DESC, t.id DESC",
+        "date_asc": "ORDER BY t.tanggal ASC, t.id ASC",
+    }
+    order_by = order_map.get(sort, "ORDER BY t.id DESC")
 
     rows = conn.execute(
         f"""
@@ -86,7 +179,18 @@ def index():
     conn.close()
 
     return render_template(
-        "index.html", rows=rows, q=q_raw, page=page, total=total, total_page=total_page, sort=sort
+        "index.html",
+        rows=rows,
+        q=q_raw,
+        page=page,
+        total=total,
+        total_page=total_page,
+        sort=sort,
+        start_month=start_month,
+        end_month=end_month,
+        start_date=start_date or "",
+        end_date=end_date or "",
+        month_options=month_options,
     )
 
 
@@ -183,7 +287,19 @@ def hapus(tid):
 # ------------------------------------------------------------------
 @app.route("/komputasi")
 def komputasi():
-    return render_template("compute.html")
+    conn = get_conn()
+    stats = conn.execute(
+        "SELECT COUNT(*) AS total, MIN(tanggal) AS min_date, MAX(tanggal) AS max_date FROM transaksi"
+    ).fetchone()
+    month_options = get_month_options(conn)
+    conn.close()
+    return render_template(
+        "compute.html",
+        total_trx=stats["total"] or 0,
+        min_date=stats["min_date"] or "",
+        max_date=stats["max_date"] or "",
+        month_options=month_options,
+    )
 
 
 @app.route("/api/komputasi", methods=["POST"])
@@ -199,22 +315,45 @@ def api_komputasi():
     if not (0 < min_support <= 1) or not (0 < min_conf <= 1):
         return jsonify(error="Nilai harus di antara 0 dan 1 (contoh: 0.01)."), 400
 
+    start_date, end_date, date_err = resolve_date_range(
+        body.get("start_date", ""),
+        body.get("end_date", ""),
+        body.get("start_month", ""),
+        body.get("end_month", ""),
+    )
+    if date_err:
+        return jsonify(error=date_err), 400
+
     conn = get_conn()
-    transactions = load_transactions(conn)
+    transactions = load_transactions(conn, start_date=start_date, end_date=end_date)
     if not transactions:
         conn.close()
-        return jsonify(error="Dataset kosong."), 400
+        return jsonify(error="Tidak ada transaksi pada rentang periode yang dipilih."), 400
 
     mulai = time.perf_counter()
     itemsets, rules, n = jalankan_apriori(transactions, min_support, min_conf)
     durasi = round(time.perf_counter() - mulai, 3)
 
+    where_clauses = []
+    params = []
+    if start_date:
+        where_clauses.append("t.tanggal >= ?")
+        params.append(start_date)
+    if end_date:
+        where_clauses.append("t.tanggal <= ?")
+        params.append(end_date)
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
     top_items = conn.execute(
-        """
-        SELECT nama_item AS item, COUNT(*) AS jumlah
-        FROM item_transaksi GROUP BY nama_item
+        f"""
+        SELECT i.nama_item AS item, COUNT(*) AS jumlah
+        FROM item_transaksi i
+        JOIN transaksi t ON t.id = i.id_transaksi
+        {where_sql}
+        GROUP BY i.nama_item
         ORDER BY jumlah DESC LIMIT 10
-        """
+        """,
+        params,
     ).fetchall()
     conn.close()
 
@@ -223,6 +362,8 @@ def api_komputasi():
         durasi=durasi,
         min_support=min_support,
         min_confidence=min_conf,
+        start_date=start_date,
+        end_date=end_date,
         itemsets=itemsets,
         rules=rules,
         top_items=[dict(r) for r in top_items],

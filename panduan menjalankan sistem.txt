@@ -1,12 +1,118 @@
-ekstrak file zip
-copy kan kode berikut ke terminal powershell yang ada di vscode
+====================================================================
+PANDUAN INSTALASI & MENJALANKAN SISTEM MARKET BASKET ANALYSIS
+(Flask + SQLite + Algoritma Apriori Pure Python)
+====================================================================
 
-jika baru pertama kali mendownload, copy kode berikut
+PRASYARAT
+---------
+1. Python versi 3.10 atau lebih baru sudah terpasang di komputer.
+   (Saat instalasi Python di Windows, pastikan centang "Add Python to PATH").
+2. Koneksi internet aktif (dibutuhkan saat install library Flask
+   dan untuk memuat tampilan Bootstrap/FontAwesome/Chart.js di browser).
 
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python app.py
 
-jika ingin menjalankan web server, cukup ketikkan
-python app.py
+LANGKAH 1: PERSIAPAN FOLDER PROJECT
+-----------------------------------
+1. Ekstrak file ZIP project ini (jika berbentuk .zip), atau buka folder projectnya.
+2. Buka folder project tersebut menggunakan VS Code (File -> Open Folder).
+3. Buka terminal di VS Code: tekan Ctrl + ` (atau menu Terminal -> New Terminal),
+   pastikan terminal yang terbuka adalah PowerShell.
+
+
+LANGKAH 2: SETUP PERTAMA KALI (WAJIB DILAKUKAN SEKALI DI AWAL)
+--------------------------------------------------------------
+Copy dan jalankan perintah berikut satu per satu di Terminal PowerShell VS Code:
+
+1. Buat virtual environment (folder venv):
+   python -m venv venv
+
+2. Aktifkan virtual environment:
+   .\venv\Scripts\Activate.ps1
+
+   * Catatan jika muncul error merah "running scripts is disabled on this system":
+     Jalankan perintah berikut sekali saja, tekan Enter, lalu ulangi langkah 2:
+     Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+
+   * Alternatif jika memakai Command Prompt (CMD):
+     venv\Scripts\activate.bat
+
+   * Alternatif jika memakai macOS / Linux:
+     source venv/bin/activate
+
+   (Jika berhasil, akan muncul tulisan "(venv)" di paling kiri baris terminal).
+
+3. Install library yang dibutuhkan (Flask):
+   pip install -r requirements.txt
+
+4. Siapkan / isi database SQLite (data.db) dari file data/groceries.csv:
+   python import_data.py
+
+   (Perintah ini akan membuat/mengisi data.db dengan 9.835 transaksi
+    yang sudah terdistribusi sepanjang tahun 2025-01-01 s/d 2025-12-31.
+    Lewati langkah ini jika data.db sudah ada dan tidak ingin di-reset).
+
+5. Jalankan web server Flask:
+   python app.py
+
+
+LANGKAH 3: MEMBUKA & MENGGUNAKAN APLIKASI
+-----------------------------------------
+1. Setelah muncul pesan seperti "Running on http://127.0.0.1:5000" di terminal,
+   buka browser (Chrome/Edge) lalu kunjungi alamat:
+   http://127.0.0.1:5000
+
+2. Fitur yang tersedia di aplikasi:
+   - Halaman Dataset Transaksi (/):
+     * Lihat seluruh data transaksi, cari berdasarkan nama item atau ID (misal: T0001 / whole milk).
+     * Filter transaksi berdasarkan "Dari Bulan - Sampai Bulan" atau "Dari Tanggal - Sampai Tanggal".
+     * Urutkan data berdasarkan ID terbaru/terlama maupun tanggal terbaru/terlama.
+     * Tambah, Ubah, atau Hapus transaksi.
+
+   - Halaman Komputasi Apriori (/komputasi):
+     * Masukkan Minimum Support (%) dan Minimum Confidence (%)
+       (atau kosongkan untuk memakai nilai default: 1% Support & 30% Confidence).
+     * Pilih rentang tanggal ("Dari Tanggal - Sampai Tanggal") atau klik tombol
+       "Periode Cepat" (misal: Jan - Mar (3 Bln)) untuk menganalisis periode tertentu.
+     * Klik "Proses Mining" untuk melihat Frequent Itemset, Association Rules,
+       serta 3 grafik visualisasi interaktif.
+
+
+CARA MENJALANKAN ULANG DI LAIN WAKTU
+------------------------------------
+Jika sudah pernah melakukan setup di atas dan ingin membuka sistem lagi:
+1. Buka terminal di folder project.
+2. Aktifkan venv:
+   .\venv\Scripts\Activate.ps1
+3. Jalankan server:
+   python app.py
+4. Buka http://127.0.0.1:5000 di browser.
+
+Untuk menghentikan server: tekan Ctrl + C pada terminal.
+
+
+TROUBLESHOOTING SINGKAT
+-----------------------
+- "No module named flask":
+  Pastikan virtual environment (venv) sudah aktif (ada tanda "(venv)" di terminal)
+  dan sudah menjalankan `pip install -r requirements.txt`.
+- "Dataset kosong" saat komputasi Apriori:
+  Jalankan ulang `python import_data.py` untuk mengisi ulang database data.db.
+- Tanggal tidak sesuai / ingin kembali ke 9.835 data awal:
+  Jalankan `python import_data.py`.
+
+
+====================================================================
+PERINTAH CEPAT (1 KALI COPAS KE TERMINAL)
+====================================================================
+
+1. SETUP PERTAMA KALI (PowerShell VS Code - 1x Copas & Enter):
+python -m venv venv; Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force; .\venv\Scripts\Activate.ps1; pip install -r requirements.txt; python import_data.py; python app.py
+
+2. JALANKAN ULANG DI LAIN WAKTU (PowerShell VS Code - 1x Copas & Enter):
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force; .\venv\Scripts\Activate.ps1; python app.py
+
+3. ALTERNATIF COMMAND PROMPT / CMD (Setup Pertama Kali - 1x Copas):
+python -m venv venv && venv\Scripts\activate.bat && pip install -r requirements.txt && python import_data.py && python app.py
+
+4. ALTERNATIF macOS / LINUX (Setup Pertama Kali - 1x Copas):
+python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && python import_data.py && python app.py

@@ -8,21 +8,22 @@
 {% block content %}
 <!-- Section: Parameter Input Card -->
 <div class="card-modern mb-4">
-  <div class="card-modern-header">
+  <div class="card-modern-header flex-wrap gap-2">
     <div>
       <h2><i class="fa-solid fa-sliders text-success me-2"></i> Parameter Association Mining</h2>
-      <p class="text-muted small mb-0 mt-1">Tentukan ambang batas minimum support (%) dan confidence (%) untuk menyaring pola belanja signifikan.</p>
+      <p class="text-muted small mb-0 mt-1">Tentukan ambang batas minimum support (%), confidence (%), dan rentang tanggal transaksi yang ingin dianalisis.</p>
     </div>
     <span class="badge bg-light text-dark border">
-      <i class="fa-solid fa-circle-info text-success me-1"></i> Total Basis: 9.835 Transaksi
+      <i class="fa-solid fa-circle-info text-success me-1"></i> Total Basis: {{ "{:,}".format(total_trx) }} Transaksi
+      {% if min_date and max_date %} ({{ min_date }} s/d {{ max_date }}){% endif %}
     </span>
   </div>
 
   <div class="card-modern-body">
     <form id="form-komputasi">
-      <div class="row g-3 align-items-center">
+      <div class="row g-3 align-items-end">
         <!-- Min Support (Dalam Persen 0 - 100%) -->
-        <div class="col-12 col-md-4">
+        <div class="col-12 col-md-6 col-lg-3">
           <label class="form-label-modern" for="min_support">
             <i class="fa-solid fa-chart-pie text-muted me-1"></i> Minimum Support (%)
           </label>
@@ -36,7 +37,7 @@
         </div>
 
         <!-- Min Confidence (Dalam Persen 0 - 100%) -->
-        <div class="col-12 col-md-4">
+        <div class="col-12 col-md-6 col-lg-3">
           <label class="form-label-modern" for="min_confidence">
             <i class="fa-solid fa-gauge-high text-muted me-1"></i> Minimum Confidence (%)
           </label>
@@ -49,13 +50,47 @@
           </div>
         </div>
 
-        <!-- Submit Button (Aligned with Inputs) -->
-        <div class="col-12 col-md-4">
-          <label class="form-label-modern d-none d-md-block" style="visibility: hidden;">&nbsp;</label>
+        <!-- Filter Tanggal Mulai -->
+        <div class="col-12 col-sm-6 col-lg-2">
+          <label class="form-label-modern" for="start_date">
+            <i class="fa-regular fa-calendar text-muted me-1"></i> Dari Tanggal
+          </label>
+          <input type="date" id="start_date" name="start_date"
+                 {% if min_date %}min="{{ min_date }}"{% endif %}
+                 {% if max_date %}max="{{ max_date }}"{% endif %}
+                 class="form-control form-control-modern" style="height: 44px;">
+        </div>
+
+        <!-- Filter Tanggal Akhir -->
+        <div class="col-12 col-sm-6 col-lg-2">
+          <label class="form-label-modern" for="end_date">
+            <i class="fa-regular fa-calendar-check text-muted me-1"></i> Sampai Tanggal
+          </label>
+          <input type="date" id="end_date" name="end_date"
+                 {% if min_date %}min="{{ min_date }}"{% endif %}
+                 {% if max_date %}max="{{ max_date }}"{% endif %}
+                 class="form-control form-control-modern" style="height: 44px;">
+        </div>
+
+        <!-- Submit Button -->
+        <div class="col-12 col-lg-2">
           <button type="submit" id="btn-proses" class="btn btn-emerald w-100" style="height: 44px;">
-            <i class="fa-solid fa-play"></i> Proses Mining Apriori
+            <i class="fa-solid fa-play"></i> Proses Mining
           </button>
         </div>
+      </div>
+
+      <!-- Preset Periode Cepat -->
+      <div class="d-flex flex-wrap align-items-center gap-2 mt-3 pt-3 border-top">
+        <span class="small fw-semibold text-muted me-1">
+          <i class="fa-regular fa-clock text-success me-1"></i> Periode Cepat:
+        </span>
+        <button type="button" class="btn btn-outline-secondary btn-sm period-preset active" data-start="" data-end="">Semua Data</button>
+        <button type="button" class="btn btn-outline-emerald btn-sm period-preset" data-start="2025-01-01" data-end="2025-03-31">Jan – Mar (3 Bln)</button>
+        <button type="button" class="btn btn-outline-emerald btn-sm period-preset" data-start="2025-04-01" data-end="2025-06-30">Apr – Jun (3 Bln)</button>
+        <button type="button" class="btn btn-outline-emerald btn-sm period-preset" data-start="2025-07-01" data-end="2025-09-30">Jul – Sep (3 Bln)</button>
+        <button type="button" class="btn btn-outline-emerald btn-sm period-preset" data-start="2025-10-01" data-end="2025-12-31">Okt – Des (3 Bln)</button>
+        <button type="button" class="btn btn-outline-emerald btn-sm period-preset" data-start="2025-01-01" data-end="2025-06-30">Semester 1 (Jan–Jun)</button>
       </div>
 
       <!-- Unified Helper / Info Strip -->
@@ -63,7 +98,7 @@
         <div class="d-flex flex-wrap gap-3">
           <div>
             <i class="fa-solid fa-circle-check text-success me-1"></i>
-            <b>Support 1%</b> = muncul di minimal 1% transaksi (&ge; 98 transaksi).
+            <b>Support</b> dihitung dari jumlah transaksi pada periode yang dipilih.
           </div>
           <div>
             <i class="fa-solid fa-circle-check text-success me-1"></i>
@@ -72,7 +107,7 @@
         </div>
         <div class="text-secondary">
           <i class="fa-regular fa-lightbulb text-warning me-1"></i>
-          Tip: Jika dikosongkan, sistem otomatis memakai nilai default (1% Support & 30% Confidence).
+          Tip: Kosongkan support/confidence untuk default (1% & 30%), kosongkan tanggal untuk seluruh data.
         </div>
       </div>
     </form>

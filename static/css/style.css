@@ -587,6 +587,13 @@ body {
   color: var(--primary-emerald-dark) !important;
 }
 
+.btn-outline-emerald.active,
+.period-preset.active {
+  background-color: var(--primary-emerald) !important;
+  border-color: var(--primary-emerald) !important;
+  color: #FFFFFF !important;
+}
+
 .btn-outline-danger {
   background-color: transparent;
   color: #DC2626 !important;

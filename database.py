@@ -26,6 +26,7 @@ def init_db():
             FOREIGN KEY (id_transaksi) REFERENCES transaksi(id) ON DELETE CASCADE
         );
 
+        CREATE INDEX IF NOT EXISTS idx_transaksi_tanggal ON transaksi(tanggal);
         CREATE INDEX IF NOT EXISTS idx_item_transaksi ON item_transaksi(id_transaksi);
         CREATE INDEX IF NOT EXISTS idx_item_nama ON item_transaksi(nama_item);
         """

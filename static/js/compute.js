@@ -188,6 +188,30 @@ function renderRules() {
   }
 }
 
+const startDateEl = document.getElementById("start_date");
+const endDateEl = document.getElementById("end_date");
+const presetBtns = document.querySelectorAll(".period-preset");
+
+function syncPresetHighlight() {
+  const s = startDateEl ? startDateEl.value : "";
+  const e = endDateEl ? endDateEl.value : "";
+  presetBtns.forEach((b) => {
+    const match = (b.dataset.start || "") === s && (b.dataset.end || "") === e;
+    b.classList.toggle("active", match);
+  });
+}
+
+presetBtns.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    if (startDateEl) startDateEl.value = btn.dataset.start || "";
+    if (endDateEl) endDateEl.value = btn.dataset.end || "";
+    syncPresetHighlight();
+  });
+});
+
+if (startDateEl) startDateEl.addEventListener("change", syncPresetHighlight);
+if (endDateEl) endDateEl.addEventListener("change", syncPresetHighlight);
+
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const btn = document.getElementById("btn-proses");
@@ -197,11 +221,13 @@ form.addEventListener("submit", async (e) => {
   // Jika dikosongkan, gunakan shadow value default (1% Support & 30% Confidence)
   const supRaw = form.min_support.value ? form.min_support.value.trim() : "";
   const confRaw = form.min_confidence.value ? form.min_confidence.value.trim() : "";
+  const startDate = startDateEl && startDateEl.value ? startDateEl.value.trim() : "";
+  const endDate = endDateEl && endDateEl.value ? endDateEl.value.trim() : "";
 
   const supportPercent = supRaw === "" ? 1.0 : parseFloat(supRaw);
   const confidencePercent = confRaw === "" ? 30.0 : parseFloat(confRaw);
 
-  // Validasi batas persentase di sisi client
+  // Validasi batas persentase & tanggal di sisi client
   if (isNaN(supportPercent) || supportPercent <= 0 || supportPercent > 100) {
     statusEl.innerHTML = `
       <div class="alert-modern error">
@@ -220,9 +246,21 @@ form.addEventListener("submit", async (e) => {
     return;
   }
 
+  if (startDate && endDate && startDate > endDate) {
+    statusEl.innerHTML = `
+      <div class="alert-modern error">
+        <i class="fa-solid fa-triangle-exclamation fs-5 text-danger"></i>
+        <div><b>Periode tidak valid:</b> Dari Tanggal tidak boleh lebih besar daripada Sampai Tanggal.</div>
+      </div>`;
+    return;
+  }
+
   // Konversi persen (0-100) ke desimal (0-1) untuk backend API
   const min_support = supportPercent / 100.0;
   const min_confidence = confidencePercent / 100.0;
+  const periodeInfo = (startDate || endDate)
+    ? `periode ${startDate || "..."} s/d ${endDate || "..."}`
+    : "seluruh periode dataset";
 
   btn.disabled = true;
   btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Menghitung Apriori...`;
@@ -230,7 +268,7 @@ form.addEventListener("submit", async (e) => {
   statusEl.innerHTML = `
     <div class="alert-modern bg-white border shadow-sm">
       <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div>
-      <span class="text-secondary fw-medium">Sedang memproses algoritma Apriori pada 9.835 transaksi (Support: ${supportPercent}%, Confidence: ${confidencePercent}%)...</span>
+      <span class="text-secondary fw-medium">Sedang memproses algoritma Apriori untuk ${esc(periodeInfo)} (Support: ${supportPercent}%, Confidence: ${confidencePercent}%)...</span>
     </div>`;
 
   try {
@@ -240,6 +278,8 @@ form.addEventListener("submit", async (e) => {
       body: JSON.stringify({
         min_support: min_support,
         min_confidence: min_confidence,
+        start_date: startDate || null,
+        end_date: endDate || null,
       }),
     });
     const data = await res.json();
@@ -279,6 +319,9 @@ function tampilkan(d) {
 
   const supPercentStr = (d.min_support * 100).toFixed(1);
   const confPercentStr = (d.min_confidence * 100).toFixed(0);
+  const periodeDesc = (d.start_date || d.end_date)
+    ? `Periode: ${esc(d.start_date || "...")} s/d ${esc(d.end_date || "...")}`
+    : "Seluruh periode dataset";
 
   // 1. Ringkasan 4 Stat Cards
   const ringkasanEl = document.getElementById("ringkasan");
@@ -289,7 +332,7 @@ function tampilkan(d) {
         <div class="stat-content">
           <div class="stat-label">Total Transaksi</div>
           <div class="stat-value">${d.total_transaksi.toLocaleString()}</div>
-          <div class="stat-desc text-muted">Basis transaksi groceries</div>
+          <div class="stat-desc text-muted">${periodeDesc}</div>
         </div>
         <div class="stat-icon-wrapper emerald">
           <i class="fa-solid fa-receipt"></i>

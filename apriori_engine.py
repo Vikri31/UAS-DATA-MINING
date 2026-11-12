@@ -2,10 +2,26 @@ from collections import defaultdict
 from itertools import combinations
 
 
-def load_transactions(conn):
-    """Ambil semua transaksi dari database sebagai list of set."""
+def load_transactions(conn, start_date=None, end_date=None):
+    """Ambil transaksi dari database sebagai list of set, opsional difilter rentang tanggal."""
+    clauses = []
+    params = []
+    if start_date:
+        clauses.append("t.tanggal >= ?")
+        params.append(start_date)
+    if end_date:
+        clauses.append("t.tanggal <= ?")
+        params.append(end_date)
+
+    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     rows = conn.execute(
-        "SELECT id_transaksi, nama_item FROM item_transaksi"
+        f"""
+        SELECT i.id_transaksi, i.nama_item
+        FROM item_transaksi i
+        JOIN transaksi t ON t.id = i.id_transaksi
+        {where_sql}
+        """,
+        params,
     ).fetchall()
 
     data = defaultdict(set)

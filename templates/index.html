@@ -14,7 +14,9 @@
       <div class="stat-content">
         <div class="stat-label">Total Transaksi</div>
         <div class="stat-value">{{ "{:,}".format(total) }}</div>
-        <div class="stat-desc text-muted">Data tersimpan di database</div>
+        <div class="stat-desc text-muted">
+          {% if q or start_date or end_date %}Sesuai filter aktif{% else %}Data tersimpan di database{% endif %}
+        </div>
       </div>
       <div class="stat-icon-wrapper emerald">
         <i class="fa-solid fa-receipt"></i>
@@ -63,7 +65,10 @@
         <div class="stat-value">{{ page }} <span class="fs-6 text-muted fw-normal">/ {{ total_page }}</span></div>
         <div class="stat-desc text-muted">
           <i class="fa-solid fa-arrow-down-wide-short me-1 text-teal"></i>
-          {% if sort == 'asc' %}Data Terlama (ID 1..){% else %}Data Terbaru (ID &darr;){% endif %}
+          {% if sort == 'asc' %}Data Terlama (ID 1..)
+          {% elif sort == 'date_desc' %}Tanggal Terbaru
+          {% elif sort == 'date_asc' %}Tanggal Terlama
+          {% else %}Data Terbaru (ID &darr;){% endif %}
         </div>
       </div>
       <div class="stat-icon-wrapper teal">
@@ -74,62 +79,130 @@
 </div>
 
 <!-- Section: Filter, Sorting & Actions Toolbar -->
+{% set has_filter = q or start_date or end_date or start_month or end_month or (sort != 'desc') %}
 <div class="card-modern">
   <div class="card-modern-body p-3">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-      <!-- Search & Sort Form -->
-      <form class="d-flex flex-wrap align-items-center gap-2 flex-grow-1" method="get" action="{{ url_for('index') }}" style="max-width: 780px;">
-        <!-- Search Input -->
-        <div class="input-group" style="flex: 1; min-width: 250px;">
-          <span class="input-group-text bg-white border-end-0 text-muted">
-            <i class="fa-solid fa-magnifying-glass"></i>
-          </span>
-          <input type="text" name="q" value="{{ q }}" class="form-control form-control-modern border-start-0" 
-                 placeholder="Cari item (misal: whole milk) atau ID..." aria-label="Search">
-          <button class="btn btn-emerald" type="submit">
-            <i class="fa-solid fa-magnifying-glass"></i> Cari
-          </button>
+    <form id="filterForm" method="get" action="{{ url_for('index') }}">
+      <!-- Baris 1: Search, Sort & Add Action -->
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div class="d-flex flex-wrap align-items-center gap-2 flex-grow-1" style="max-width: 780px;">
+          <!-- Search Input -->
+          <div class="input-group" style="flex: 1; min-width: 240px;">
+            <span class="input-group-text bg-white border-end-0 text-muted">
+              <i class="fa-solid fa-magnifying-glass"></i>
+            </span>
+            <input type="text" name="q" value="{{ q }}" class="form-control form-control-modern border-start-0"
+                   placeholder="Cari item (misal: whole milk) atau ID..." aria-label="Search">
+            <button class="btn btn-emerald" type="submit">
+              <i class="fa-solid fa-magnifying-glass"></i> Cari
+            </button>
+          </div>
+
+          <!-- Sort Filter Dropdown -->
+          <div class="d-flex align-items-center gap-1">
+            <label for="sortSelect" class="small fw-semibold text-muted text-nowrap mb-0 d-none d-sm-inline">
+              <i class="fa-solid fa-arrow-down-wide-short text-success me-1"></i> Urutan:
+            </label>
+            <select name="sort" id="sortSelect" class="form-select form-select-modern" style="width: auto; min-width: 175px;" onchange="this.form.submit()">
+              <option value="desc" {% if sort == 'desc' or not sort %}selected{% endif %}>Data Terbaru (Default)</option>
+              <option value="asc" {% if sort == 'asc' %}selected{% endif %}>Data Terlama (ID 1..)</option>
+              <option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Tanggal Terbaru</option>
+              <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Tanggal Terlama</option>
+            </select>
+          </div>
         </div>
 
-        <!-- Sort Filter Dropdown -->
-        <div class="d-flex align-items-center gap-1">
-          <label for="sortSelect" class="small fw-semibold text-muted text-nowrap mb-0 d-none d-sm-inline">
-            <i class="fa-solid fa-arrow-down-wide-short text-success me-1"></i> Urutan:
+        <!-- Add Data Action Button -->
+        <div>
+          <a class="btn btn-emerald" href="{{ url_for('tambah') }}">
+            <i class="fa-solid fa-circle-plus"></i> Tambah Transaksi
+          </a>
+        </div>
+      </div>
+
+      <!-- Baris 2: Filter Rentang Bulan & Rentang Tanggal -->
+      <div class="d-flex flex-wrap align-items-end gap-2 mt-3 pt-3 border-top">
+        <!-- Dari Bulan -->
+        <div style="min-width: 155px;">
+          <label for="startMonthSelect" class="small fw-semibold text-muted d-block mb-1">
+            <i class="fa-regular fa-calendar text-success me-1"></i> Dari Bulan
           </label>
-          <select name="sort" id="sortSelect" class="form-select form-select-modern" style="width: auto; min-width: 175px;" onchange="this.form.submit()">
-            <option value="desc" {% if sort != 'asc' %}selected{% endif %}>Data Terbaru (Default)</option>
-            <option value="asc" {% if sort == 'asc' %}selected{% endif %}>Data Terlama (ID 1..)</option>
+          <select name="start_month" id="startMonthSelect" class="form-select form-select-sm form-select-modern">
+            <option value="">Semua Bulan</option>
+            {% for m in month_options %}
+              <option value="{{ m.value }}" {% if start_month == m.value %}selected{% endif %}>{{ m.label }}</option>
+            {% endfor %}
           </select>
         </div>
 
-        <!-- Reset Button -->
-        {% if q or sort == 'asc' %}
-          <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm text-nowrap" title="Reset filter & urutan">
-            <i class="fa-solid fa-rotate-left"></i> Reset
-          </a>
-        {% endif %}
-      </form>
+        <!-- Sampai Bulan -->
+        <div style="min-width: 155px;">
+          <label for="endMonthSelect" class="small fw-semibold text-muted d-block mb-1">
+            <i class="fa-regular fa-calendar-check text-success me-1"></i> Sampai Bulan
+          </label>
+          <select name="end_month" id="endMonthSelect" class="form-select form-select-sm form-select-modern">
+            <option value="">Semua Bulan</option>
+            {% for m in month_options %}
+              <option value="{{ m.value }}" {% if end_month == m.value %}selected{% endif %}>{{ m.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
 
-      <!-- Add Data Action Button -->
-      <div>
-        <a class="btn btn-emerald" href="{{ url_for('tambah') }}">
-          <i class="fa-solid fa-circle-plus"></i> Tambah Transaksi
-        </a>
+        <div class="vr d-none d-md-block mx-1 align-self-stretch"></div>
+
+        <!-- Dari Tanggal -->
+        <div style="min-width: 150px;">
+          <label for="startDateInput" class="small fw-semibold text-muted d-block mb-1">
+            <i class="fa-solid fa-calendar-day text-muted me-1"></i> Dari Tanggal
+          </label>
+          <input type="date" name="start_date" id="startDateInput" value="{{ start_date }}"
+                 class="form-control form-control-sm form-control-modern">
+        </div>
+
+        <!-- Sampai Tanggal -->
+        <div style="min-width: 150px;">
+          <label for="endDateInput" class="small fw-semibold text-muted d-block mb-1">
+            <i class="fa-solid fa-calendar-day text-muted me-1"></i> Sampai Tanggal
+          </label>
+          <input type="date" name="end_date" id="endDateInput" value="{{ end_date }}"
+                 class="form-control form-control-sm form-control-modern">
+        </div>
+
+        <!-- Apply & Reset Buttons -->
+        <div class="d-flex align-items-center gap-2 ms-md-auto">
+          <button type="submit" class="btn btn-outline-emerald btn-sm text-nowrap" style="height: 34px;">
+            <i class="fa-solid fa-filter"></i> Terapkan Periode
+          </button>
+          {% if has_filter %}
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm text-nowrap d-inline-flex align-items-center gap-1" style="height: 34px;" title="Reset semua filter & urutan">
+              <i class="fa-solid fa-rotate-left"></i> Reset
+            </a>
+          {% endif %}
+        </div>
       </div>
-    </div>
+    </form>
   </div>
 </div>
 
 <!-- Section: Table Dataset -->
 <div class="card-modern">
   <div class="card-modern-header flex-wrap gap-2">
-    <div class="d-flex align-items-center gap-2">
+    <div class="d-flex flex-wrap align-items-center gap-2">
       <h2><i class="fa-solid fa-table text-success"></i> Tabel Transaksi Market Basket</h2>
       {% if q %}
-        <span class="badge bg-light text-dark border ms-2">Filter: "{{ q }}"</span>
+        <span class="badge bg-light text-dark border">Cari: "{{ q }}"</span>
       {% endif %}
-      <span class="badge bg-emerald-subtle text-success border ms-1">
-        {% if sort == 'asc' %}Urut: Terlama (ID Naik){% else %}Urut: Terbaru (ID Turun){% endif %}
+      {% if start_date or end_date %}
+        <span class="badge bg-light text-dark border">
+          <i class="fa-regular fa-calendar text-success me-1"></i>
+          Periode: {{ start_date or '...' }} s/d {{ end_date or '...' }}
+        </span>
+      {% endif %}
+      <span class="badge bg-emerald-subtle text-success border">
+        {% if sort == 'asc' %}Urut: Terlama (ID Naik)
+        {% elif sort == 'date_desc' %}Urut: Tanggal Terbaru
+        {% elif sort == 'date_asc' %}Urut: Tanggal Terlama
+        {% else %}Urut: Terbaru (ID Turun){% endif %}
       </span>
     </div>
     <span class="text-muted small">Total: <b>{{ "{:,}".format(total) }}</b> transaksi</span>
@@ -197,7 +270,7 @@
               <i class="fa-solid fa-inbox fa-3x mb-3 text-secondary opacity-50"></i>
               <p class="mb-1 fw-bold">Data transaksi tidak ditemukan.</p>
               <p class="small">Coba ubah kata kunci pencarian Anda atau tambahkan transaksi baru.</p>
-              {% if q %}
+              {% if has_filter %}
                 <a href="{{ url_for('index') }}" class="btn btn-outline-emerald btn-sm mt-2">
                   <i class="fa-solid fa-rotate-left"></i> Tampilkan Semua Data
                 </a>
@@ -211,19 +284,19 @@
   </div>
 </div>
 
-<!-- Section: Pagination (Preserving sort & q) -->
+<!-- Section: Pagination (Preserving sort, q, & date/month filters) -->
 {% if total_page > 1 %}
 <div class="pagination-modern">
   <!-- Tombol Halaman Pertama (jika bukan di dekat halaman 1) -->
   {% if page > 2 %}
-    <a href="{{ url_for('index', page=1, q=q, sort=sort) }}" class="pagination-btn" title="Halaman Pertama">
+    <a href="{{ url_for('index', page=1, q=q, sort=sort, start_month=start_month, end_month=end_month, start_date=start_date, end_date=end_date) }}" class="pagination-btn" title="Halaman Pertama">
       <i class="fa-solid fa-angles-left"></i>
     </a>
   {% endif %}
 
   <!-- Tombol Halaman Sebelumnya -->
   {% if page > 1 %}
-    <a href="{{ url_for('index', page=page-1, q=q, sort=sort) }}" class="pagination-btn">
+    <a href="{{ url_for('index', page=page-1, q=q, sort=sort, start_month=start_month, end_month=end_month, start_date=start_date, end_date=end_date) }}" class="pagination-btn">
       <i class="fa-solid fa-chevron-left"></i> Sebelumnya
     </a>
   {% endif %}
@@ -232,6 +305,10 @@
   <form method="get" action="{{ url_for('index') }}" class="d-inline-flex align-items-center gap-1 mx-1 my-1">
     {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
     {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+    {% if start_month %}<input type="hidden" name="start_month" value="{{ start_month }}">{% endif %}
+    {% if end_month %}<input type="hidden" name="end_month" value="{{ end_month }}">{% endif %}
+    {% if start_date %}<input type="hidden" name="start_date" value="{{ start_date }}">{% endif %}
+    {% if end_date %}<input type="hidden" name="end_date" value="{{ end_date }}">{% endif %}
     <span class="pagination-info text-nowrap">Halaman</span>
     <input type="number" name="page" min="1" max="{{ total_page }}" value="{{ page }}" 
            class="form-control form-control-sm form-control-modern text-center fw-bold" 
@@ -245,18 +322,57 @@
 
   <!-- Tombol Halaman Berikutnya -->
   {% if page < total_page %}
-    <a href="{{ url_for('index', page=page+1, q=q, sort=sort) }}" class="pagination-btn">
+    <a href="{{ url_for('index', page=page+1, q=q, sort=sort, start_month=start_month, end_month=end_month, start_date=start_date, end_date=end_date) }}" class="pagination-btn">
       Berikutnya <i class="fa-solid fa-chevron-right"></i>
     </a>
   {% endif %}
 
   <!-- Tombol Halaman Terakhir -->
   {% if page < total_page - 1 %}
-    <a href="{{ url_for('index', page=total_page, q=q, sort=sort) }}" class="pagination-btn" title="Halaman Terakhir ({{ total_page }})">
+    <a href="{{ url_for('index', page=total_page, q=q, sort=sort, start_month=start_month, end_month=end_month, start_date=start_date, end_date=end_date) }}" class="pagination-btn" title="Halaman Terakhir ({{ total_page }})">
       <i class="fa-solid fa-angles-right"></i>
     </a>
   {% endif %}
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const startMonth = document.getElementById("startMonthSelect");
+  const endMonth = document.getElementById("endMonthSelect");
+  const startDate = document.getElementById("startDateInput");
+  const endDate = document.getElementById("endDateInput");
+
+  function lastDayOfMonth(ym) {
+    const [y, m] = ym.split("-").map(Number);
+    const d = new Date(y, m, 0).getDate();
+    return `${ym}-${String(d).padStart(2, "0")}`;
+  }
+
+  if (startMonth && startDate) {
+    startMonth.addEventListener("change", () => {
+      startDate.value = startMonth.value ? `${startMonth.value}-01` : "";
+    });
+    startDate.addEventListener("change", () => {
+      if (startDate.value && startMonth.value && !startDate.value.startsWith(startMonth.value)) {
+        startMonth.value = "";
+      }
+    });
+  }
+
+  if (endMonth && endDate) {
+    endMonth.addEventListener("change", () => {
+      endDate.value = endMonth.value ? lastDayOfMonth(endMonth.value) : "";
+    });
+    endDate.addEventListener("change", () => {
+      if (endDate.value && endMonth.value && !endDate.value.startsWith(endMonth.value)) {
+        endMonth.value = "";
+      }
+    });
+  }
+})();
+</script>
 {% endblock %}
